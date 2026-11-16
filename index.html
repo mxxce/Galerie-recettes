@@ -65,7 +65,8 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .irow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;z-index:20}
 .toast.e{background:var(--accent)}
-@media(max-width:620px){.two,.three{grid-template-columns:1fr}.row{grid-template-columns:1fr 44px}.row .x{grid-column:2;grid-row:1/3}.row.s .x{grid-row:auto}.cats{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.pill{white-space:nowrap;flex:none}.hero{aspect-ratio:4/3}.nut{grid-template-columns:auto repeat(4,minmax(60px,1fr))}}
+@media(max-width:620px){.two,.three{grid-template-columns:1fr}.row{grid-template-columns:1fr 44px}.row .x{grid-column:2;grid-row:1/3}.row.s .x{grid-row:auto}.cats{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.pill{white-space:nowrap;flex:none}.bar{padding:8px 14px;gap:6px}.logo{font-size:1.05rem;width:100%}nav a{padding:6px 12px;font-size:.92rem}main{padding:20px 14px 70px}.find{margin-bottom:18px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{border-radius:16px}.ph{font-size:1.8rem}.cb{padding:10px 11px 12px}.cb h3{font-size:.98rem;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.meta{font-size:.76rem;gap:1px 8px}.miss,.ok{font-size:.76rem;margin-top:6px}.hero{aspect-ratio:4/3}.nut{grid-template-columns:auto repeat(4,minmax(60px,1fr))}}
+@media(max-width:340px){.grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -98,9 +99,9 @@ function totals(r) {
 }
 let ING = [], CAT = '';
 const CATS = ['Apéro', 'Entrée', 'Plat', 'Dessert', 'Boissons'];
-const refText = i => i.unit === 'piece' ? `1 ${i.unit_label}` : `100 ${i.unit}`;          // base des valeurs nutritionnelles
-const sfx = i => !i ? '' : i.unit === 'piece' ? i.unit_label : i.unit;                   // unité affichée dans le champ quantité
-const qtyLabel = (i, q) => i.unit === 'piece' ? `${fmt(q)} × ${i.unit_label}` : `${fmt(q)} ${i.unit}`;
+const refText = i => i.unit === 'piece' ? `1 ${i.name.toLowerCase()}` : `100 ${i.unit}`;          // base des valeurs nutritionnelles
+const sfx = i => !i ? '' : i.unit === 'piece' ? 'unité(s)' : i.unit;                   // unité affichée dans le champ quantité
+const qtyLabel = (i, q) => i.unit === 'piece' ? `${fmt(q)} × ${i.name.toLowerCase()}` : `${fmt(q)} ${i.unit}`;
 const loadIng = async () => { ING = ok(await db.from('ingredients').select('*').order('name')); };
 
 /* ============ Routeur ============ */
@@ -211,7 +212,7 @@ async function viewForm(id) {
   drawRows(); drawSteps(); live();
 }
 function drawRows() {
-  const opts = sel => `<option value="">Choisir…</option>` + ING.map(i => `<option value="${i.id}" ${i.id === sel ? 'selected' : ''}>${esc(i.name)} (${i.unit === 'piece' ? 'par ' + esc(i.unit_label) : i.unit})</option>`).join('');
+  const opts = sel => `<option value="">Choisir…</option>` + ING.map(i => `<option value="${i.id}" ${i.id === sel ? 'selected' : ''}>${esc(i.name)} (${i.unit === 'piece' ? 'par unité' : i.unit})</option>`).join('');
   $('#rows').innerHTML = F.rows.map((r, n) => { const i = ING.find(x => x.id === r.ingredient_id);
     return `<div class="row"><select data-n="${n}" aria-label="Ingrédient">${opts(r.ingredient_id)}</select><div class="qw"><input data-q="${n}" inputmode="decimal" placeholder="Quantité" value="${esc(r.quantity)}" aria-label="Quantité"><span class="u">${esc(sfx(i))}</span></div><button class="x" data-rm="${n}" type="button" aria-label="Retirer">✕</button></div>`; }).join('');
   $('#rows').oninput = e => { const d = e.target.dataset;
@@ -268,12 +269,12 @@ async function viewIng() {
   app.innerHTML = `<h1 style="margin-bottom:6px">Mes ingrédients</h1><p class="muted" style="margin:0 0 18px">Valeurs nutritionnelles pour 100 g, pour 100 ml ou par unité (1 tomate, 1 œuf…).</p>
   <div class="panel form"><h2 id="ft">Nouvel ingrédient</h2>
     <div class="two"><div><label for="n">Nom *</label><input id="n"></div><div><label for="u">Valeurs nutritionnelles</label><select id="u"><option value="g">Pour 100 g</option><option value="ml">Pour 100 ml</option><option value="piece">Par quantité</option></select></div></div>
-    <div id="ulw" hidden><label for="ul">Unité de référence *</label><input id="ul" placeholder="ex. concombre, tomate, œuf"><small class="muted">Les valeurs ci-dessous correspondent à 1 unité de référence.</small></div>
+    <p id="ulw" class="muted" hidden style="margin:10px 0 0">Les valeurs ci-dessous correspondent à 1 unité de l’ingrédient (ex. 1 aubergine, 1 œuf). Dans une recette, vous pourrez saisir 0,5, 1 ou 2.</p>
     <div class="three" style="grid-template-columns:repeat(2,1fr)"><div><label for="k">Calories (kcal)</label><input id="k" inputmode="decimal"></div><div><label for="p">Protéines (g)</label><input id="p" inputmode="decimal"></div>
     <div><label for="c">Glucides (g)</label><input id="c" inputmode="decimal"></div><div><label for="f">Lipides (g)</label><input id="f" inputmode="decimal"></div></div>
     <div class="actions" style="margin:20px 0 0"><button class="btn pri" id="sv">Ajouter l’ingrédient</button><button class="btn ghost" id="cn" hidden>Annuler</button></div></div>
   <input id="s" placeholder="Rechercher un ingrédient" style="margin-bottom:12px" aria-label="Rechercher"><div class="panel" id="list"></div>`;
-  const reset = () => { editing = null; ['n', 'k', 'p', 'c', 'f', 'ul'].forEach(i => $('#' + i).value = ''); $('#u').value = 'g'; $('#ulw').hidden = true; $('#ft').textContent = 'Nouvel ingrédient'; $('#sv').textContent = 'Ajouter l’ingrédient'; $('#cn').hidden = true; };
+  const reset = () => { editing = null; ['n', 'k', 'p', 'c', 'f'].forEach(i => $('#' + i).value = ''); $('#u').value = 'g'; $('#ulw').hidden = true; $('#ft').textContent = 'Nouvel ingrédient'; $('#sv').textContent = 'Ajouter l’ingrédient'; $('#cn').hidden = true; };
   const draw = () => {
     const l = ING.filter(i => norm(i.name).includes(norm(filter)));
     $('#list').innerHTML = l.length ? l.map(i => `<div class="irow"><div><b>${esc(i.name)}</b><div class="muted" style="font-size:.9rem">pour ${refText(i)} : ${fmt(i.kcal)} kcal, ${fmt(i.protein)} g protéines, ${fmt(i.carbs)} g glucides, ${fmt(i.fat)} g lipides</div></div>
@@ -284,9 +285,7 @@ async function viewIng() {
   $('#cn').onclick = reset;
   $('#sv').onclick = async () => {
     const name = $('#n').value.trim(); if (!name) return toast('Le nom est obligatoire', true);
-    const unit = $('#u').value, unit_label = unit === 'piece' ? $('#ul').value.trim().replace(/^1\s+/, '') : null;
-    if (unit === 'piece' && !unit_label) return toast('Indiquez l’unité de référence (ex. concombre)', true);
-    const v = { name, unit, unit_label, kcal: num($('#k').value), protein: num($('#p').value), carbs: num($('#c').value), fat: num($('#f').value) };
+    const v = { name, unit: $('#u').value, kcal: num($('#k').value), protein: num($('#p').value), carbs: num($('#c').value), fat: num($('#f').value) };
     if (Object.values(v).some(x => typeof x === 'number' && x < 0)) return toast('Les valeurs ne peuvent pas être négatives', true);
     try {
       ok(editing ? await db.from('ingredients').update(v).eq('id', editing) : await db.from('ingredients').insert(v));
@@ -295,7 +294,7 @@ async function viewIng() {
   };
   $('#list').onclick = async e => {
     const { e: eid, d: did } = e.target.dataset;
-    if (eid) { const i = ING.find(x => x.id === eid); editing = eid; $('#n').value = i.name; $('#u').value = i.unit; $('#ul').value = i.unit_label || ''; $('#ulw').hidden = i.unit !== 'piece'; $('#k').value = i.kcal; $('#p').value = i.protein; $('#c').value = i.carbs; $('#f').value = i.fat; $('#ft').textContent = 'Modifier l’ingrédient'; $('#sv').textContent = 'Enregistrer'; $('#cn').hidden = false; window.scrollTo(0, 0); }
+    if (eid) { const i = ING.find(x => x.id === eid); editing = eid; $('#n').value = i.name; $('#u').value = i.unit; $('#ulw').hidden = i.unit !== 'piece'; $('#k').value = i.kcal; $('#p').value = i.protein; $('#c').value = i.carbs; $('#f').value = i.fat; $('#ft').textContent = 'Modifier l’ingrédient'; $('#sv').textContent = 'Enregistrer'; $('#cn').hidden = false; window.scrollTo(0, 0); }
     if (did) { const i = ING.find(x => x.id === did); if (!confirm(`Supprimer « ${i.name} » ?`)) return;
       try { ok(await db.from('ingredients').delete().eq('id', did)); toast('Ingrédient supprimé'); await loadIng(); draw(); } catch (er) { toast(er.message, true); } }
   };

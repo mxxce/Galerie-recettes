@@ -44,3 +44,9 @@ Sans connexion, quiconque connaît l’adresse du site et la clé `anon` peut mo
 2. Remplacez `index.html` dans votre dépôt GitHub (gardez votre `config.js`).
 3. Les anciennes recettes apparaissent dans un filtre « À classer » : ouvrez-les, cliquez sur **Modifier**, choisissez une catégorie et enregistrez. (Le filtre disparaît quand tout est classé.)
 4. Nouvelle installation : exécutez `supabase.sql` puis `supabase_migration_v2.sql`.
+
+## Mise à jour V3 (ingrédients « par quantité » simplifiés, cartes mobiles)
+
+1. Exécutez `supabase_migration_v3.sql` dans Supabase > SQL Editor (sans perte de données).
+2. Remplacez `index.html` dans votre dépôt GitHub.
+3. En mode « Par quantité », les valeurs saisies correspondent à **1 unité de l’ingrédient** (1 aubergine, 1 œuf…). Dans la recette, saisissez 0,5, 1, 2… ; le nom de l’ingrédient fait office d’unité.
