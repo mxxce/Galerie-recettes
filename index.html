@@ -88,6 +88,7 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 /* ============ Outils ============ */
 const $ = s => document.querySelector(s), app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const stepsToText = s => Array.isArray(s) ? s.join('\n') : (s ?? '');
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 const fmt = v => (Math.round((+v || 0) * 10) / 10).toLocaleString('fr-FR');
 const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? 0 : n; };
@@ -198,7 +199,7 @@ async function viewLib() {
 const nutBlock = (t, f) => ['kcal', 'protein', 'carbs', 'fat'].map(k => `<b>${fmt(t[k] / f)}</b>`).join('');
 async function viewRecipe(id) {
   const r = ok(await db.from('recipes').select('*, recipe_ingredients(quantity, position, ingredients(*))').eq('id', id).single());
-  const ris = r.recipe_ingredients.sort((a, b) => a.position - b.position), t = totals(r);
+  const ris = r.recipe_ingredients.sort((a, b) => a.position - b.position), t = totals(r), prepText = stepsToText(r.steps);
   app.innerHTML = `<div class="hero">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '🍽'}</div>
   <h1 class="rtitle">${esc(r.title)}</h1>
   <div class="chips">${r.category ? `<span class="chip">${esc(r.category)}</span>` : ''}<span class="chip">Préparation ${r.prep_min} min</span><span class="chip">Cuisson ${r.cook_min} min</span><span class="chip">${r.servings} portion${r.servings > 1 ? 's' : ''}</span></div>
@@ -206,7 +207,7 @@ async function viewRecipe(id) {
   <div class="panel"><h2>Valeurs nutritionnelles</h2><div class="nut"><span></span><small>kcal</small><small>Protéines (g)</small><small>Glucides (g)</small><small>Lipides (g)</small>
     <small>Total</small>${nutBlock(t, 1)}<small>Par portion</small>${nutBlock(t, r.servings)}</div></div>
   <div class="panel"><h2>Ingrédients</h2>${ris.length ? `<ul class="ing">${ris.map(x => `<li><span>${esc(x.ingredients.name)}</span><b>${qtyLabel(x.ingredients, x.quantity)}</b></li>`).join('')}</ul>` : '<p class="muted">Aucun ingrédient.</p>'}</div>
-  <div class="panel"><h2>Préparation</h2>${r.steps.length ? `<ol class="steps">${r.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : '<p class="muted">Aucune étape.</p>'}</div>
+  <div class="panel"><h2>Préparation</h2>${prepText.trim() ? `<p style="white-space:pre-wrap;margin:0">${esc(prepText)}</p>` : '<p class="muted">Aucune étape.</p>'}</div>
   ${r.notes ? `<div class="panel"><h2>Notes</h2><p style="white-space:pre-wrap;margin:0">${esc(r.notes)}</p></div>` : ''}`;
   $('#del').onclick = () => confirmDelete({
     title: 'Supprimer cette recette ?', name: r.title,
@@ -224,8 +225,8 @@ async function viewForm(id) {
   await loadIng();
   if (id) {
     const r = ok(await db.from('recipes').select('*, recipe_ingredients(quantity, position, ingredient_id)').eq('id', id).single());
-    F = { ...r, rows: r.recipe_ingredients.sort((a, b) => a.position - b.position).map(x => ({ ingredient_id: x.ingredient_id, quantity: x.quantity })), file: null };
-  } else F = { title: '', category: CATS.includes(CAT) ? CAT : '', cover_url: null, cover_path: null, prep_min: '', cook_min: '', servings: 4, rows: [{ ingredient_id: '', quantity: '' }], steps: [''], notes: '', file: null };
+    F = { ...r, steps: stepsToText(r.steps), notes: r.notes ?? '', rows: r.recipe_ingredients.sort((a, b) => a.position - b.position).map(x => ({ ingredient_id: x.ingredient_id, quantity: x.quantity })), file: null };
+  } else F = { title: '', category: CATS.includes(CAT) ? CAT : '', cover_url: null, cover_path: null, prep_min: '', cook_min: '', servings: 4, rows: [{ ingredient_id: '', quantity: '' }], steps: '', notes: '', file: null };
   if (!ING.length) toast('Créez d’abord des ingrédients dans l’onglet Ingrédients', true);
   app.innerHTML = `<h1 style="margin-bottom:18px">${id ? 'Modifier la recette' : 'Nouvelle recette'}</h1><div class="panel form">
     <label for="title">Titre *</label><input id="title" value="${esc(F.title)}">
@@ -236,16 +237,17 @@ async function viewForm(id) {
     <div><label for="serv">Portions *</label><input id="serv" inputmode="numeric" value="${esc(F.servings)}"></div></div>
     <label>Ingrédients *</label><div id="rows"></div><button class="btn ghost" id="addRow" type="button">Ajouter un ingrédient</button>
     <div id="live" class="nut" style="margin-top:18px"></div>
-    <label>Étapes de préparation</label><div id="steps"></div><button class="btn ghost" id="addStep" type="button">Ajouter une étape</button>
-    <label for="notes">Notes personnelles</label><textarea id="notes" rows="3">${esc(F.notes)}</textarea>
+    <label for="steps">Préparation</label><textarea id="steps" rows="6"></textarea>
+    <label for="notes">Notes personnelles</label><textarea id="notes" rows="3"></textarea>
     <div class="actions" style="margin:22px 0 0"><button class="btn pri" id="save">Enregistrer la recette</button><a class="btn ghost" href="#/${id ? 'recette/' + id : ''}">Annuler</a></div></div>`;
+  $('#steps').value = F.steps;
+  $('#notes').value = F.notes;
   const bind = (sel, k) => $(sel).oninput = e => { F[k] = e.target.value; live(); };
-  bind('#title', 'title'); bind('#cat', 'category'); bind('#prep', 'prep_min'); bind('#cook', 'cook_min'); bind('#serv', 'servings'); bind('#notes', 'notes');
+  bind('#title', 'title'); bind('#cat', 'category'); bind('#prep', 'prep_min'); bind('#cook', 'cook_min'); bind('#serv', 'servings'); bind('#steps', 'steps'); bind('#notes', 'notes');
   $('#file').onchange = e => { F.file = e.target.files[0] || null; if (F.file) { $('#prev').src = URL.createObjectURL(F.file); $('#prev').hidden = false; } };
   $('#addRow').onclick = () => { F.rows.push({ ingredient_id: '', quantity: '' }); drawRows(); };
-  $('#addStep').onclick = () => { F.steps.push(''); drawSteps(); };
   $('#save').onclick = saveRecipe;
-  drawRows(); drawSteps(); live();
+  drawRows(); live();
 }
 function drawRows() {
   const opts = sel => `<option value="">Choisir…</option>` + ING.map(i => `<option value="${i.id}" ${i.id === sel ? 'selected' : ''}>${esc(i.name)} (${i.unit === 'piece' ? 'par unité' : i.unit})</option>`).join('');
@@ -255,11 +257,6 @@ function drawRows() {
     if (d.n) { F.rows[d.n].ingredient_id = e.target.value; e.target.closest('.row').querySelector('.u').textContent = sfx(ING.find(x => x.id === e.target.value)); }
     if (d.q) F.rows[d.q].quantity = e.target.value; live(); };
   $('#rows').onclick = e => { const n = e.target.dataset.rm; if (n !== undefined) { F.rows.splice(n, 1); drawRows(); live(); } };
-}
-function drawSteps() {
-  $('#steps').innerHTML = F.steps.map((s, n) => `<div class="row s"><textarea rows="2" data-s="${n}" placeholder="Étape ${n + 1}">${esc(s)}</textarea><button class="x" data-rm="${n}" type="button" aria-label="Retirer">✕</button></div>`).join('');
-  $('#steps').oninput = e => { if (e.target.dataset.s) F.steps[e.target.dataset.s] = e.target.value; };
-  $('#steps').onclick = e => { const n = e.target.dataset.rm; if (n !== undefined) { F.steps.splice(n, 1); drawSteps(); } };
 }
 function live() { // aperçu nutritionnel en temps réel
   const r = { recipe_ingredients: F.rows.filter(x => x.ingredient_id && num(x.quantity) > 0).map(x => ({ quantity: num(x.quantity), ingredients: ING.find(i => i.id === x.ingredient_id) })) };
@@ -288,7 +285,8 @@ async function saveRecipe() {
       if (up.error) throw new Error('Envoi de la photo impossible : ' + up.error.message);
       oldPath = F.cover_path; cover_path = path; cover_url = db.storage.from('recipe-photos').getPublicUrl(path).data.publicUrl;
     }
-    const rec = { title: F.title.trim(), category: F.category, cover_url, cover_path, prep_min: Math.round(num(F.prep_min)), cook_min: Math.round(num(F.cook_min)), servings: Math.round(num(F.servings)), steps: F.steps.map(s => s.trim()).filter(Boolean), notes: F.notes?.trim() || null };
+    const prep = F.steps && F.steps.trim() ? F.steps : '';
+    const rec = { title: F.title.trim(), category: F.category, cover_url, cover_path, prep_min: Math.round(num(F.prep_min)), cook_min: Math.round(num(F.cook_min)), servings: Math.round(num(F.servings)), steps: prep ? [prep] : [], notes: F.notes?.trim() || null };
     let id = F.id;
     if (id) ok(await db.from('recipes').update(rec).eq('id', id)); else id = ok(await db.from('recipes').insert(rec).select('id').single()).id;
     ok(await db.from('recipe_ingredients').delete().eq('recipe_id', id));
