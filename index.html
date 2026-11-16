@@ -79,7 +79,9 @@ const fmt = v => (Math.round((+v || 0) * 10) / 10).toLocaleString('fr-FR');
 const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? 0 : n; };
 function toast(msg, err) { const t = document.createElement('div'); t.className = 'toast' + (err ? ' e' : ''); t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 3000); }
 const ready = window.CONFIG && !CONFIG.SUPABASE_URL.includes('VOTRE');
-const db = ready ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
+// Ne garde que https://xxxx.supabase.co (retire "/", "/rest/v1", espaces, etc.)
+const baseUrl = ready ? (() => { try { return new URL(CONFIG.SUPABASE_URL.trim()).origin; } catch { return CONFIG.SUPABASE_URL.trim(); } })() : '';
+const db = ready ? supabase.createClient(baseUrl, CONFIG.SUPABASE_ANON_KEY.trim()) : null;
 const ok = ({ data, error }) => { if (error) throw new Error(error.code === '23503' ? 'Cet ingrédient est utilisé dans une recette : retirez-le d’abord de ces recettes.' : error.code === '23505' ? 'Un ingrédient porte déjà ce nom.' : error.message); return data; };
 
 /* Nutrition : valeurs pour 100 g/ml × quantité / 100, additionnées */
