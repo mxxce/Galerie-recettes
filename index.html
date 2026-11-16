@@ -20,6 +20,8 @@ nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 nav a,nav button.navbtn{font:inherit;padding:8px 15px;border-radius:99px;font-weight:500;border:0;background:transparent;color:var(--ink);cursor:pointer}
 nav a.on{background:var(--ink);color:#fff}
 nav a.add{background:var(--accent);color:#fff}
+.netbar{background:#7A1F1F;color:#fff;text-align:center;padding:8px 16px;font-size:.9rem;font-weight:500}
+.netbar.ok{background:#2F6F3E}
 main{max-width:1100px;margin:auto;padding:28px 20px 80px}
 .find{margin-bottom:24px}.find h1{font-size:clamp(1.7rem,4vw,2.5rem);margin-bottom:12px}
 .searchrow{display:flex;gap:10px;flex-wrap:wrap}
@@ -122,7 +124,10 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 </style>
 </head>
 <body>
-<header><div class="bar"><a class="logo" href="#/">Mon carnet de recettes</a><nav id="nav"></nav></div></header>
+<header>
+  <div id="netbar" class="netbar" hidden></div>
+  <div class="bar"><a class="logo" href="#/">Mon carnet de recettes</a><nav id="nav"></nav></div>
+</header>
 <main id="app"></main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -136,39 +141,233 @@ const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u030
 const fmt = v => (Math.round((+v || 0) * 10) / 10).toLocaleString('fr-FR');
 const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? 0 : n; };
 const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
 function toast(msg, err) {
+  document.querySelectorAll('.toast').forEach(x => x.remove());
   const t = document.createElement('div');
   t.className = 'toast' + (err ? ' e' : '');
   t.textContent = msg;
   document.body.append(t);
-  setTimeout(() => t.remove(), 3200);
+  setTimeout(() => t.remove(), err ? 4500 : 3200);
 }
 
-const ready = window.CONFIG && !CONFIG.SUPABASE_URL.includes('VOTRE');
-const baseUrl = ready ? (() => { try { return new URL(CONFIG.SUPABASE_URL.trim()).origin; } catch { return CONFIG.SUPABASE_URL.trim(); } })() : '';
-const db = ready ? supabase.createClient(baseUrl, CONFIG.SUPABASE_ANON_KEY.trim(), {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
-}) : null;
+/* ============ Délai d'attente (Timeout) & Traduction d'erreurs ============ */
+function withTimeout(promise, ms = 18000, label = 'La requête') {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const err = new Error(`${label} a pris trop de temps. Vérifiez votre connexion et réessayez.`);
+      err.code = 'CLIENT_TIMEOUT';
+      reject(err);
+    }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function humanizeError(err) {
+  if (!navigator.onLine) return 'Vous êtes hors ligne. Vos données sont conservées : réessayez dès que la connexion revient.';
+  const code = String(err?.code || '');
+  const status = Number(err?.status || err?.statusCode || 0);
+  const msg = String(err?.message || err || '');
+
+  if (code === 'CLIENT_TIMEOUT' || err?.name === 'AbortError') {
+    return 'La connexion au serveur a expiré (délai dépassé). Vos données n’ont pas été effacées, vous pouvez réessayer.';
+  }
+  if (code === 'SESSION_EXPIRED' || status === 401 || /jwt expired|invalid jwt|refresh_token|not authenticated/i.test(msg)) {
+    return 'Votre session a expiré. Vos saisies sont sauvegardées localement : reconnectez-vous pour enregistrer.';
+  }
+  if (code === '23503') return 'Cet ingrédient est utilisé dans une recette : retirez-le d’abord.';
+  if (code === '23505') return 'Cet élément existe déjà dans la base de données.';
+  if (code === '42501' || status === 403) return 'Action non autorisée sur cette ressource.';
+  if (status === 429) return 'Trop de requêtes envoyées. Patientez quelques secondes avant de réessayer.';
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
+    return 'Impossible de joindre le serveur (coupure réseau temporaire). Réessayez dans un instant.';
+  }
+  return msg || 'Une erreur inattendue est survenue.';
+}
 
 const ok = ({ data, error }) => {
   if (error) {
-    if (error.code === '23503') throw new Error('Cet ingrédient est utilisé dans une recette : retirez-le d’abord.');
-    if (error.code === '23505') throw new Error('Cet élément existe déjà.');
-    if (error.code === '42501') throw new Error('Action non autorisée sur cette ressource.');
-    throw new Error(error.message);
+    console.error('[Supabase Error]', error);
+    const wrapped = new Error(humanizeError(error));
+    wrapped.raw = error;
+    wrapped.code = error.code;
+    wrapped.status = error.status;
+    throw wrapped;
   }
   return data;
 };
 
+/* ============ Initialisation unique du client Supabase ============ */
+const ready = window.CONFIG && !CONFIG.SUPABASE_URL.includes('VOTRE');
+const baseUrl = ready ? (() => { try { return new URL(CONFIG.SUPABASE_URL.trim()).origin; } catch { return CONFIG.SUPABASE_URL.trim(); } })() : '';
+const db = ready ? supabase.createClient(baseUrl, CONFIG.SUPABASE_ANON_KEY.trim(), {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    storageKey: 'carnet-recettes-auth'
+  }
+}) : null;
+
 let SESSION = null, ME = null, ING = [], CAT = '';
+let refreshLock = null, lastActiveAt = Date.now(), routeToken = 0;
+
 const CATS = ['Apéro', 'Entrée', 'Plat', 'Dessert', 'Boissons'];
 const refText = i => i.unit === 'piece' ? `1 ${i.name.toLowerCase()}` : `100 ${i.unit}`;
 const sfx = i => !i ? '' : i.unit === 'piece' ? 'unité(s)' : i.unit;
 const qtyLabel = (i, q) => i.unit === 'piece' ? `${fmt(q)} × ${i.name.toLowerCase()}` : `${fmt(q)} ${i.unit}`;
+
+/* ============ Gestion robuste des sessions & récupération réseau ============ */
+function isJwtExpiringSoon(session, bufferSec = 90) {
+  if (!session?.expires_at) return false;
+  return (session.expires_at - Math.floor(Date.now() / 1000)) <= bufferSec;
+}
+
+async function ensureValidSession({ requireAuth = true, forceRefresh = false } = {}) {
+  if (!db) throw new Error('Configuration Supabase manquante.');
+  if (refreshLock) return refreshLock;
+
+  refreshLock = (async () => {
+    try {
+      const { data: sData, error: sErr } = await withTimeout(db.auth.getSession(), 10000, 'La vérification de session');
+      if (sErr) console.warn('[Session getSession warning]', sErr);
+      let current = sData?.session || SESSION;
+
+      if (!current) {
+        SESSION = null; ME = null; renderNav();
+        if (requireAuth) {
+          const err = new Error('Votre session a expiré. Reconnectez-vous pour continuer.');
+          err.code = 'SESSION_EXPIRED';
+          throw err;
+        }
+        return null;
+      }
+
+      if (forceRefresh || isJwtExpiringSoon(current, 120)) {
+        const { data: rData, error: rErr } = await withTimeout(db.auth.refreshSession(), 12000, 'Le renouvellement de session');
+        if (rErr || !rData?.session) {
+          console.error('[Session refresh failed]', rErr);
+          if (isJwtExpiringSoon(current, 0)) {
+            SESSION = null; ME = null; renderNav();
+            if (requireAuth) {
+              const err = new Error('Votre session a expiré. Vos données sont conservées localement : reconnectez-vous.');
+              err.code = 'SESSION_EXPIRED';
+              throw err;
+            }
+            return null;
+          }
+        } else {
+          current = rData.session;
+        }
+      }
+
+      SESSION = current;
+      if (SESSION?.user && (!ME || ME.id !== SESSION.user.id)) {
+        await refreshProfile();
+      }
+      return SESSION;
+    } finally {
+      refreshLock = null;
+    }
+  })();
+
+  return refreshLock;
+}
+
+/* Exécute une opération d'écriture avec renouvellement auto, timeout et retry unique sur erreur transitoire */
+async function safeMutate(fn, label = 'La sauvegarde') {
+  if (!navigator.onLine) {
+    throw new Error('Vous êtes hors ligne. Vos modifications sont conservées : réessayez dès que Internet revient.');
+  }
+  await ensureValidSession({ requireAuth: true });
+  try {
+    return await withTimeout(fn(), 22000, label);
+  } catch (err) {
+    console.warn('[safeMutate first attempt failed]', err);
+    const msg = String(err?.raw?.message || err?.message || '');
+    const isAuthOrNet = err?.code === 'CLIENT_TIMEOUT' || err?.status === 401 || /jwt|token|fetch|network/i.test(msg);
+    if (isAuthOrNet && navigator.onLine) {
+      await ensureValidSession({ requireAuth: true, forceRefresh: true });
+      return await withTimeout(fn(), 22000, label);
+    }
+    throw err;
+  }
+}
+
+/* Protège tout bouton contre les clics multiples et garantit sa réinitialisation via finally */
+async function runAction(btn, busyLabel, fn) {
+  if (!btn || btn.dataset.busy === '1') return;
+  const origText = btn.textContent;
+  btn.dataset.busy = '1';
+  btn.disabled = true;
+  if (busyLabel) btn.textContent = busyLabel;
+  try {
+    return await fn();
+  } catch (e) {
+    console.error('[Action Error]', e);
+    toast(humanizeError(e), true);
+  } finally {
+    if (document.contains(btn)) {
+      btn.dataset.busy = '0';
+      btn.disabled = false;
+      btn.textContent = origText;
+    }
+  }
+}
+
+function setupLifecycleListeners() {
+  const netbar = $('#netbar');
+  window.addEventListener('offline', () => {
+    if (!netbar) return;
+    netbar.className = 'netbar';
+    netbar.textContent = 'Connexion Internet perdue — vos saisies en cours restent conservées dans le navigateur.';
+    netbar.hidden = false;
+  });
+
+  window.addEventListener('online', async () => {
+    if (netbar) {
+      netbar.className = 'netbar ok';
+      netbar.textContent = 'Connexion rétablie — vérification de la session…';
+      netbar.hidden = false;
+      setTimeout(() => { if (navigator.onLine) netbar.hidden = true; }, 3500);
+    }
+    try {
+      await ensureValidSession({ requireAuth: false, forceRefresh: true });
+      renderNav();
+    } catch (e) {
+      console.warn('[Online recovery]', e);
+    }
+  });
+
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'hidden') {
+      lastActiveAt = Date.now();
+      return;
+    }
+    const idleMs = Date.now() - lastActiveAt;
+    lastActiveAt = Date.now();
+    if (idleMs > 90 * 1000 && SESSION && navigator.onLine) {
+      try {
+        await ensureValidSession({ requireAuth: false, forceRefresh: idleMs > 15 * 60 * 1000 });
+        renderNav();
+      } catch (e) {
+        console.warn('[Visibility recovery]', e);
+      }
+    }
+  });
+}
+
+/* Chargement paginé de tous les ingrédients (> 1 000) avec timeout */
 const loadIng = async () => {
+  await ensureValidSession({ requireAuth: false });
   let all = [], from = 0, step = 1000;
   while (true) {
-    const rows = ok(await db.from('ingredients').select('*').order('name').range(from, from + step - 1));
+    const rows = ok(await withTimeout(
+      db.from('ingredients').select('*').order('name').range(from, from + step - 1),
+      15000,
+      'Le chargement des ingrédients'
+    ));
     all = all.concat(rows || []);
     if (!rows || rows.length < step) break;
     from += step;
@@ -199,7 +398,11 @@ async function sha256Hex(str) {
 
 async function refreshProfile() {
   if (!SESSION?.user) { ME = null; return; }
-  const { data } = await db.from('profiles').select('*').eq('id', SESSION.user.id).maybeSingle();
+  const { data } = await withTimeout(
+    db.from('profiles').select('*').eq('id', SESSION.user.id).maybeSingle(),
+    10000,
+    'Le chargement du profil'
+  );
   ME = data || null;
 }
 
@@ -261,8 +464,20 @@ function confirmDialog({ title, name, text, warn, confirmLabel = 'Supprimer', ex
     yes.onclick = async () => {
       if (busy) return;
       busy = true; yes.disabled = no.disabled = true; yes.textContent = 'Traitement…'; err.hidden = true;
-      try { await onConfirm(el); close(); }
-      catch (e) { busy = false; yes.disabled = no.disabled = false; yes.textContent = confirmLabel; err.textContent = e.message; err.hidden = false; }
+      try {
+        await onConfirm(el);
+        close();
+      } catch (e) {
+        console.error('[Confirm Dialog Error]', e);
+        err.textContent = humanizeError(e);
+        err.hidden = false;
+      } finally {
+        if (document.contains(yes)) {
+          busy = false;
+          yes.disabled = no.disabled = false;
+          yes.textContent = confirmLabel;
+        }
+      }
     };
     no.focus();
   });
@@ -270,11 +485,14 @@ function confirmDialog({ title, name, text, warn, confirmLabel = 'Supprimer', ex
 
 /* ============ Routeur ============ */
 async function route() {
+  const token = ++routeToken;
   renderNav();
   if (!ready) { app.innerHTML = '<div class="err">Renseignez vos clés Supabase dans <b>config.js</b>.</div>'; return; }
   const [p, a] = location.hash.slice(2).split('/');
   app.innerHTML = '<p class="muted">Chargement…</p>';
   try {
+    await ensureValidSession({ requireAuth: false });
+    if (token !== routeToken) return;
     if (p === 'connexion') await viewLogin();
     else if (p === 'inscription') await viewRegister();
     else if (p === 'recherche') await viewSearch();
@@ -286,19 +504,31 @@ async function route() {
     else if (p === 'recette') await viewRecipe(a);
     else await viewDashboard();
   } catch (e) {
-    app.innerHTML = `<div class="err">Une erreur est survenue : ${esc(e.message)}</div>`;
+    if (token !== routeToken) return;
+    console.error('[Route Error]', e);
+    app.innerHTML = `<div class="err">${esc(humanizeError(e))}</div>
+      <button class="btn ghost" type="button" onclick="route()">Réessayer</button>`;
   }
   window.scrollTo(0, 0);
 }
 
 async function boot() {
+  setupLifecycleListeners();
   if (db) {
-    const { data } = await db.auth.getSession();
-    SESSION = data.session;
-    await refreshProfile();
-    db.auth.onAuthStateChange(async (_event, session) => {
-      SESSION = session;
+    try {
+      const { data } = await withTimeout(db.auth.getSession(), 10000, 'L’initialisation');
+      SESSION = data?.session || null;
       await refreshProfile();
+    } catch (e) {
+      console.warn('[Boot session warning]', e);
+    }
+    db.auth.onAuthStateChange(async (event, session) => {
+      SESSION = session;
+      if (event === 'SIGNED_OUT') {
+        ME = null;
+      } else if (session?.user && (!ME || ME.id !== session.user.id)) {
+        try { await refreshProfile(); } catch (_) {}
+      }
       renderNav();
     });
   }
@@ -337,6 +567,7 @@ async function viewRegister() {
   $('#regf').onsubmit = async e => {
     e.preventDefault();
     const errBox = $('#aerr'), btn = $('#sub');
+    if (btn.disabled) return;
     errBox.hidden = true;
     const pseudo = $('#pseudo').value.trim();
     const pwd = $('#pwd').value;
@@ -349,26 +580,26 @@ async function viewRegister() {
 
     btn.disabled = true; btn.textContent = 'Création du compte…';
     try {
-      const existing = await db.rpc('resolve_login_id', { p_pseudo: pseudo });
+      const existing = await withTimeout(db.rpc('resolve_login_id', { p_pseudo: pseudo }), 12000, 'La vérification du pseudo');
       if (existing.data) throw new Error('Ce pseudo est déjà utilisé.');
 
       const loginId = `u_${crypto.randomUUID()}@carnet.invalid`;
-      const { data, error } = await db.auth.signUp({
+      const { data, error } = await withTimeout(db.auth.signUp({
         email: loginId,
         password: pwd,
         options: { data: { pseudo } }
-      });
+      }), 15000, 'L’inscription');
 
       if (error) {
         const msg = error.message || '';
         if (msg.includes('PSEUDO_TAKEN')) throw new Error('Ce pseudo est déjà utilisé.');
         if (msg.includes('PSEUDO_INVALID')) throw new Error('Pseudo invalide (3 à 24 caractères : lettres, chiffres, ., _, -).');
         if (msg.toLowerCase().includes('password')) throw new Error('Mot de passe trop court ou non sécurisé.');
-        throw new Error('Erreur lors de la création du compte. Réessayez.');
+        throw new Error(humanizeError(error));
       }
 
       if (!data.session) {
-        const si = await db.auth.signInWithPassword({ email: loginId, password: pwd });
+        const si = await withTimeout(db.auth.signInWithPassword({ email: loginId, password: pwd }), 15000, 'La connexion');
         if (si.error) throw new Error('Compte créé, veuillez vous connecter.');
         SESSION = si.data.session;
       } else {
@@ -380,9 +611,13 @@ async function viewRegister() {
       toast(`Bienvenue ${ME?.pseudo || pseudo} !`);
       location.hash = '#/';
     } catch (ex) {
-      errBox.textContent = ex.message;
+      errBox.textContent = humanizeError(ex);
       errBox.hidden = false;
-      btn.disabled = false; btn.textContent = 'Créer mon compte';
+    } finally {
+      if (document.contains(btn)) {
+        btn.disabled = false;
+        btn.textContent = 'Créer mon compte';
+      }
     }
   };
 }
@@ -408,6 +643,7 @@ async function viewLogin() {
   $('#logf').onsubmit = async e => {
     e.preventDefault();
     const errBox = $('#lerr'), btn = $('#lsub');
+    if (btn.disabled) return;
     errBox.hidden = true;
     const pseudo = $('#lpseudo').value.trim();
     const pwd = $('#lpwd').value;
@@ -415,9 +651,9 @@ async function viewLogin() {
 
     btn.disabled = true; btn.textContent = 'Connexion…';
     try {
-      const { data: loginId } = await db.rpc('resolve_login_id', { p_pseudo: pseudo });
+      const { data: loginId } = await withTimeout(db.rpc('resolve_login_id', { p_pseudo: pseudo }), 12000, 'La recherche du compte');
       const effectiveId = loginId || `u_${(await sha256Hex(norm(pseudo))).slice(0, 32)}@carnet.invalid`;
-      const { data, error } = await db.auth.signInWithPassword({ email: effectiveId, password: pwd });
+      const { data, error } = await withTimeout(db.auth.signInWithPassword({ email: effectiveId, password: pwd }), 15000, 'La connexion');
       if (error || !data.session) {
         if (error?.status === 429) throw new Error('Trop de tentatives de connexion. Patientez quelques instants.');
         throw new Error('Pseudo ou mot de passe incorrect.');
@@ -428,9 +664,13 @@ async function viewLogin() {
       toast(`Ravi de vous revoir, ${ME?.pseudo || pseudo} !`);
       location.hash = '#/';
     } catch (ex) {
-      errBox.textContent = ex.message;
+      errBox.textContent = humanizeError(ex);
       errBox.hidden = false;
-      btn.disabled = false; btn.textContent = 'Se connecter';
+    } finally {
+      if (document.contains(btn)) {
+        btn.disabled = false;
+        btn.textContent = 'Se connecter';
+      }
     }
   };
 }
@@ -466,11 +706,11 @@ function recipeCardHtml(r, { showAuthor = true, showVis = false, showCopyBadge =
 /* ============ Accueil / Tableau de bord ============ */
 async function viewDashboard() {
   if (!SESSION || !ME) {
-    const pub = ok(await db.from('recipes')
+    const pub = ok(await withTimeout(db.from('recipes')
       .select('id, owner_id, title, description, category, dish_type, cover_url, prep_min, cook_min, servings, visibility, created_at, profiles:owner_id(id, pseudo, avatar_url), recipe_ingredients(quantity, ingredients(*))')
       .eq('visibility', 'public')
       .order('created_at', { ascending: false })
-      .limit(8));
+      .limit(8), 15000));
     app.innerHTML = `
       <section class="panel" style="background:linear-gradient(135deg,#fff,#FAF3E3)">
         <h1 style="font-size:clamp(1.7rem,4vw,2.4rem);margin-bottom:10px">Partagez vos recettes et composez votre carnet</h1>
@@ -488,7 +728,7 @@ async function viewDashboard() {
     return;
   }
 
-  const [myCountRes, followersRes, followingRes, followingIdsRes, recentMineRes] = await Promise.all([
+  const [myCountRes, followersRes, followingRes, followingIdsRes, recentMineRes] = await withTimeout(Promise.all([
     db.from('recipes').select('id', { count: 'exact', head: true }).eq('owner_id', ME.id),
     db.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', ME.id),
     db.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', ME.id),
@@ -498,17 +738,17 @@ async function viewDashboard() {
       .eq('owner_id', ME.id)
       .order('created_at', { ascending: false })
       .limit(4)
-  ]);
+  ]), 15000);
 
   const followingIds = (followingIdsRes.data || []).map(x => x.following_id);
   let feed = [];
   if (followingIds.length) {
-    feed = ok(await db.from('recipes')
+    feed = ok(await withTimeout(db.from('recipes')
       .select('id, owner_id, title, description, category, dish_type, cover_url, prep_min, cook_min, servings, visibility, created_at, profiles:owner_id(id, pseudo, avatar_url), recipe_ingredients(quantity, ingredients(*))')
       .eq('visibility', 'public')
       .in('owner_id', followingIds)
       .order('created_at', { ascending: false })
-      .limit(6));
+      .limit(6), 15000));
   }
 
   app.innerHTML = `
@@ -543,10 +783,10 @@ async function viewDashboard() {
 let MY_Q = '', MY_FILTER = 'all';
 async function viewMyRecipes() {
   if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
-  const recipes = ok(await db.from('recipes')
+  const recipes = ok(await withTimeout(db.from('recipes')
     .select('*, recipe_ingredients(quantity, ingredients(*))')
     .eq('owner_id', ME.id)
-    .order('created_at', { ascending: false }));
+    .order('created_at', { ascending: false }), 15000));
 
   const hasNone = recipes.some(r => !r.category);
   if (CAT === '__none' && !hasNone) CAT = '';
@@ -584,7 +824,7 @@ async function viewMyRecipes() {
       if (CAT !== '' && (CAT === '__none' ? !!r.category : r.category !== CAT)) return false;
       return true;
     }).map(r => {
-      const names = (r.recipe_ingredients || []).map(ri => ({ raw: ri.ingredients.name, n: norm(ri.ingredients.name) }));
+      const names = (r.recipe_ingredients || []).map(ri => ({ raw: ri.ingredients?.name || '', n: norm(ri.ingredients?.name || '') }));
       const missing = terms.length ? names.filter(x => !terms.some(t => hit(x.n, t))).map(x => x.raw) : [];
       const title = norm(r.title);
       return { r, missing, score: names.length - missing.length, total: names.length, tHit: terms.some(t => inTitle(title, t)), tFull: terms.length > 0 && inTitle(title, terms.join(' ')) };
@@ -612,14 +852,14 @@ async function viewMyRecipes() {
   draw();
 }
 
-/* ============ Nouveau Menu : Recherche (Recettes & Utilisateurs) ============ */
+/* ============ Recherche (Recettes & Utilisateurs) ============ */
 let SRCH_TAB = 'recipes', SRCH_Q = '', SRCH_CAT = '', SRCH_DISH = '', SRCH_SORT = 'recent';
 async function viewSearch() {
   const PAGE_SIZE = 12;
   let offset = 0, loading = false, hasMore = false;
   let myFollowing = new Set();
   if (SESSION && ME) {
-    const fRows = ok(await db.from('follows').select('following_id').eq('follower_id', ME.id));
+    const fRows = ok(await withTimeout(db.from('follows').select('following_id').eq('follower_id', ME.id), 12000));
     myFollowing = new Set(fRows.map(x => x.following_id));
   }
 
@@ -682,14 +922,14 @@ async function viewSearch() {
 
     try {
       if (SRCH_TAB === 'recipes') {
-        const rows = ok(await db.rpc('search_public_recipes', {
+        const rows = ok(await withTimeout(db.rpc('search_public_recipes', {
           p_query: SRCH_Q,
           p_category: SRCH_CAT,
           p_dish_type: SRCH_DISH,
           p_sort: SRCH_SORT,
           p_limit: PAGE_SIZE,
           p_offset: offset
-        }));
+        }), 15000));
         hasMore = rows.length === PAGE_SIZE;
         offset += rows.length;
         const html = rows.map(r => recipeCardHtml(r, { showAuthor: true })).join('');
@@ -704,17 +944,17 @@ async function viewSearch() {
         let q = db.from('profiles').select('id, pseudo, bio, avatar_url, created_at').order('pseudo', { ascending: true }).range(offset, offset + PAGE_SIZE - 1);
         const term = norm(SRCH_Q);
         if (term) q = q.ilike('pseudo_norm', `%${term}%`);
-        const users = ok(await q);
+        const users = ok(await withTimeout(q, 15000));
         hasMore = users.length === PAGE_SIZE;
         offset += users.length;
 
         const userIds = users.map(u => u.id);
         let pubCounts = {}, folCounts = {};
         if (userIds.length) {
-          const [pRes, fRes] = await Promise.all([
+          const [pRes, fRes] = await withTimeout(Promise.all([
             db.from('recipes').select('owner_id').eq('visibility', 'public').in('owner_id', userIds),
             db.from('follows').select('following_id').in('following_id', userIds)
-          ]);
+          ]), 12000);
           (pRes.data || []).forEach(x => { pubCounts[x.owner_id] = (pubCounts[x.owner_id] || 0) + 1; });
           (fRes.data || []).forEach(x => { folCounts[x.following_id] = (folCounts[x.following_id] || 0) + 1; });
         }
@@ -746,12 +986,15 @@ async function viewSearch() {
         }
       }
       $('#smore').hidden = !hasMore;
-      $('#morebtn').disabled = false;
-      $('#morebtn').textContent = 'Charger plus';
     } catch (e) {
-      toast(e.message, true);
+      toast(humanizeError(e), true);
+      if (reset) $('#sresults').innerHTML = `<div class="err">${esc(humanizeError(e))}</div>`;
     } finally {
       loading = false;
+      if ($('#morebtn')) {
+        $('#morebtn').disabled = false;
+        $('#morebtn').textContent = 'Charger plus';
+      }
     }
   };
 
@@ -768,15 +1011,14 @@ async function viewSearch() {
     if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
     const targetId = btn.dataset.follow;
     if (targetId === ME.id) return;
-    btn.disabled = true;
-    try {
+    await runAction(btn, '…', async () => {
       const wasFollowing = myFollowing.has(targetId);
       if (wasFollowing) {
-        ok(await db.from('follows').delete().eq('follower_id', ME.id).eq('following_id', targetId));
+        await safeMutate(async () => ok(await db.from('follows').delete().eq('follower_id', ME.id).eq('following_id', targetId)));
         myFollowing.delete(targetId);
         toast('Utilisateur non suivi');
       } else {
-        ok(await db.from('follows').insert({ follower_id: ME.id, following_id: targetId }));
+        await safeMutate(async () => ok(await db.from('follows').insert({ follower_id: ME.id, following_id: targetId })));
         myFollowing.add(targetId);
         toast('Utilisateur suivi');
       }
@@ -787,11 +1029,7 @@ async function viewSearch() {
       fSpan.textContent = `${nextNum} abonné${nextNum > 1 ? 's' : ''}`;
       btn.className = `btn sm ${wasFollowing ? 'pri' : 'ghost'}`;
       btn.textContent = wasFollowing ? 'Suivre' : 'Ne plus suivre';
-    } catch (ex) {
-      toast(ex.message, true);
-    } finally {
-      btn.disabled = false;
-    }
+    });
   };
 
   $('#morebtn').onclick = () => runSearch(false);
@@ -803,14 +1041,14 @@ async function viewSearch() {
 let PROF_TAB = 'published';
 async function viewProfile(targetId) {
   if (!targetId) { location.hash = '#/connexion'; return; }
-  const profile = ok(await db.from('profiles').select('*').eq('id', targetId).maybeSingle());
+  const profile = ok(await withTimeout(db.from('profiles').select('*').eq('id', targetId).maybeSingle(), 12000));
   if (!profile) {
     app.innerHTML = `<div class="empty">Ce profil utilisateur n’existe pas ou a été supprimé.</div>`;
     return;
   }
 
   const isOwn = ME && profile.id === ME.id;
-  const [followersRes, followingRes, pubRes, savedRes, isFollowingRes] = await Promise.all([
+  const [followersRes, followingRes, pubRes, savedRes, isFollowingRes] = await withTimeout(Promise.all([
     db.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', profile.id),
     db.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', profile.id),
     db.from('recipes')
@@ -828,7 +1066,7 @@ async function viewProfile(targetId) {
     (!isOwn && ME)
       ? db.from('follows').select('follower_id').eq('follower_id', ME.id).eq('following_id', profile.id).maybeSingle()
       : Promise.resolve({ data: null })
-  ]);
+  ]), 15000);
 
   let followersCount = followersRes.count || 0;
   const followingCount = followingRes.count || 0;
@@ -883,13 +1121,13 @@ async function viewProfile(targetId) {
       document.querySelectorAll('#ptabs .tab').forEach(t => t.classList.toggle('on', t.dataset.pt === PROF_TAB));
       renderGrid();
     };
-    $('#logoutBtn').onclick = async () => {
+    $('#logoutBtn').onclick = () => runAction($('#logoutBtn'), 'Déconnexion…', async () => {
       await db.auth.signOut();
       SESSION = null; ME = null;
       renderNav();
       toast('Vous êtes déconnecté');
       location.hash = '#/connexion';
-    };
+    });
     $('#editProf').onclick = () => openEditProfileModal(profile);
     $('#delAccBtn').onclick = () => confirmDialog({
       title: 'Supprimer définitivement votre compte ?',
@@ -902,7 +1140,7 @@ async function viewProfile(targetId) {
       </label>`,
       onConfirm: async el => {
         const delPub = el.querySelector('#delPubChk').checked;
-        ok(await db.rpc('delete_my_account', { p_delete_public_recipes: delPub }));
+        await safeMutate(async () => ok(await db.rpc('delete_my_account', { p_delete_public_recipes: delPub })));
         await db.auth.signOut();
         SESSION = null; ME = null;
         renderNav();
@@ -911,31 +1149,24 @@ async function viewProfile(targetId) {
       }
     });
   } else {
-    $('#followBtn').onclick = async () => {
+    $('#followBtn').onclick = () => runAction($('#followBtn'), 'Traitement…', async () => {
       if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
       const btn = $('#followBtn');
-      btn.disabled = true;
-      try {
-        if (isFollowing) {
-          ok(await db.from('follows').delete().eq('follower_id', ME.id).eq('following_id', profile.id));
-          isFollowing = false;
-          followersCount = Math.max(0, followersCount - 1);
-          toast('Utilisateur non suivi');
-        } else {
-          ok(await db.from('follows').insert({ follower_id: ME.id, following_id: profile.id }));
-          isFollowing = true;
-          followersCount += 1;
-          toast('Utilisateur suivi');
-        }
-        btn.className = `btn ${isFollowing ? 'ghost' : 'pri'}`;
-        btn.textContent = isFollowing ? 'Ne plus suivre' : 'Suivre';
-        $('#fcount').textContent = followersCount;
-      } catch (ex) {
-        toast(ex.message, true);
-      } finally {
-        btn.disabled = false;
+      if (isFollowing) {
+        await safeMutate(async () => ok(await db.from('follows').delete().eq('follower_id', ME.id).eq('following_id', profile.id)));
+        isFollowing = false;
+        followersCount = Math.max(0, followersCount - 1);
+        toast('Utilisateur non suivi');
+      } else {
+        await safeMutate(async () => ok(await db.from('follows').insert({ follower_id: ME.id, following_id: profile.id })));
+        isFollowing = true;
+        followersCount += 1;
+        toast('Utilisateur suivi');
       }
-    };
+      btn.className = `btn ${isFollowing ? 'ghost' : 'pri'}`;
+      btn.textContent = isFollowing ? 'Ne plus suivre' : 'Suivre';
+      $('#fcount').textContent = followersCount;
+    });
   }
 
   $('#btnFollowers').onclick = () => openFollowListModal(profile.id, 'followers');
@@ -972,6 +1203,7 @@ function openEditProfileModal(profile) {
     el.querySelector('#pform').onsubmit = async e => {
       e.preventDefault();
       const errBox = el.querySelector('#perr'), btn = el.querySelector('#psave');
+      if (btn.disabled) return;
       errBox.hidden = true;
       const newPseudo = el.querySelector('#epseudo').value.trim();
       const newBio = el.querySelector('#ebio').value.trim();
@@ -980,34 +1212,41 @@ function openEditProfileModal(profile) {
 
       btn.disabled = true; btn.textContent = 'Enregistrement…';
       try {
-        if (norm(newPseudo) !== profile.pseudo_norm || newPseudo !== profile.pseudo) {
-          const { error: pUpdErr } = await db.rpc('update_my_pseudo', { p_new_pseudo: newPseudo });
-          if (pUpdErr) {
-            if (pUpdErr.message?.includes('PSEUDO_TAKEN')) throw new Error('Ce pseudo est déjà utilisé.');
-            throw new Error(pUpdErr.message);
+        await safeMutate(async () => {
+          if (norm(newPseudo) !== profile.pseudo_norm || newPseudo !== profile.pseudo) {
+            const { error: pUpdErr } = await db.rpc('update_my_pseudo', { p_new_pseudo: newPseudo });
+            if (pUpdErr) {
+              if (pUpdErr.message?.includes('PSEUDO_TAKEN')) throw new Error('Ce pseudo est déjà utilisé.');
+              throw new Error(humanizeError(pUpdErr));
+            }
           }
-        }
 
-        let { avatar_url, avatar_path } = profile, oldAvatar = null;
-        if (avatarFile) {
-          const path = `${profile.id}/${crypto.randomUUID()}.jpg`;
-          const up = await db.storage.from('avatars').upload(path, await resize(avatarFile, 600), { contentType: 'image/jpeg' });
-          if (up.error) throw new Error('Envoi de la photo impossible : ' + up.error.message);
-          oldAvatar = profile.avatar_path;
-          avatar_path = path;
-          avatar_url = db.storage.from('avatars').getPublicUrl(path).data.publicUrl;
-        }
+          let { avatar_url, avatar_path } = profile, oldAvatar = null;
+          if (avatarFile) {
+            const path = `${profile.id}/${crypto.randomUUID()}.jpg`;
+            const up = await db.storage.from('avatars').upload(path, await resize(avatarFile, 600), { contentType: 'image/jpeg' });
+            if (up.error) throw new Error('Envoi de la photo impossible : ' + up.error.message);
+            oldAvatar = profile.avatar_path;
+            avatar_path = path;
+            avatar_url = db.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+          }
 
-        ok(await db.from('profiles').update({ bio: newBio, avatar_url, avatar_path, updated_at: new Date().toISOString() }).eq('id', profile.id));
-        if (oldAvatar) await db.storage.from('avatars').remove([oldAvatar]);
+          ok(await db.from('profiles').update({ bio: newBio, avatar_url, avatar_path, updated_at: new Date().toISOString() }).eq('id', profile.id));
+          if (oldAvatar) await db.storage.from('avatars').remove([oldAvatar]).catch(() => {});
+        }, 'La mise à jour du profil');
+
         await refreshProfile();
         toast('Profil mis à jour');
         close();
         viewProfile(profile.id);
       } catch (ex) {
-        errBox.textContent = ex.message;
+        errBox.textContent = humanizeError(ex);
         errBox.hidden = false;
-        btn.disabled = false; btn.textContent = 'Enregistrer';
+      } finally {
+        if (document.contains(btn)) {
+          btn.disabled = false;
+          btn.textContent = 'Enregistrer';
+        }
       }
     };
   });
@@ -1020,13 +1259,13 @@ async function openFollowListModal(userId, mode) {
     try {
       const col = mode === 'followers' ? 'follower_id' : 'following_id';
       const filterCol = mode === 'followers' ? 'following_id' : 'follower_id';
-      const rows = ok(await db.from('follows').select(`${col}`).eq(filterCol, userId).order('created_at', { ascending: false }));
+      const rows = ok(await withTimeout(db.from('follows').select(`${col}`).eq(filterCol, userId).order('created_at', { ascending: false }), 12000));
       const ids = rows.map(r => r[col]);
       if (!ids.length) {
         el.querySelector('#flist').innerHTML = `<p class="muted">Aucun ${mode === 'followers' ? 'abonné' : 'abonnement'} pour le moment.</p>`;
         return;
       }
-      const profiles = ok(await db.from('profiles').select('id, pseudo, bio, avatar_url').in('id', ids));
+      const profiles = ok(await withTimeout(db.from('profiles').select('id, pseudo, bio, avatar_url').in('id', ids), 12000));
       el.querySelector('#flist').innerHTML = profiles.map(p => `
         <div class="urow">
           <a href="#/profil/${p.id}" class="flnk" style="display:flex;align-items:center;gap:10px;min-width:0">
@@ -1040,7 +1279,7 @@ async function openFollowListModal(userId, mode) {
         </div>`).join('');
       el.querySelectorAll('.flnk').forEach(a => a.onclick = () => close());
     } catch (ex) {
-      el.querySelector('#flist').innerHTML = `<div class="err">${esc(ex.message)}</div>`;
+      el.querySelector('#flist').innerHTML = `<div class="err">${esc(humanizeError(ex))}</div>`;
     }
   });
 }
@@ -1048,10 +1287,10 @@ async function openFollowListModal(userId, mode) {
 /* ============ Fiche recette détaillée ============ */
 const nutBlock = (t, f) => ['kcal', 'protein', 'carbs', 'fat'].map(k => `<b>${fmt(t[k] / f)}</b>`).join('');
 async function viewRecipe(id) {
-  const { data: r, error } = await db.from('recipes')
+  const { data: r, error } = await withTimeout(db.from('recipes')
     .select('*, profiles:owner_id(id, pseudo, avatar_url), recipe_ingredients(quantity, position, ingredients(*))')
     .eq('id', id)
-    .maybeSingle();
+    .maybeSingle(), 15000);
 
   if (error || !r) {
     app.innerHTML = `<div class="empty">Cette recette est privée ou n’existe plus.</div>`;
@@ -1063,10 +1302,10 @@ async function viewRecipe(id) {
   let existingCopyId = null;
 
   if (isOwner) {
-    const nRes = await db.from('recipe_private_notes').select('notes').eq('recipe_id', r.id).maybeSingle();
+    const nRes = await withTimeout(db.from('recipe_private_notes').select('notes').eq('recipe_id', r.id).maybeSingle(), 10000);
     privateNotes = nRes.data?.notes || '';
   } else if (ME) {
-    const cRes = await db.from('recipes').select('id').eq('owner_id', ME.id).eq('source_recipe_id', r.id).maybeSingle();
+    const cRes = await withTimeout(db.from('recipes').select('id').eq('owner_id', ME.id).eq('source_recipe_id', r.id).maybeSingle(), 10000);
     existingCopyId = cRes.data?.id || null;
   }
 
@@ -1120,68 +1359,56 @@ async function viewRecipe(id) {
     ${isOwner && privateNotes.trim() ? `<div class="panel"><h2>Notes personnelles <small class="muted" style="font-family:Figtree;font-size:.82rem">(privées)</small></h2><p style="white-space:pre-wrap;margin:0">${esc(privateNotes)}</p></div>` : ''}`;
 
   if (isOwner) {
-    $('#toggleVis').onclick = async () => {
-      const btn = $('#toggleVis');
-      btn.disabled = true;
+    $('#toggleVis').onclick = () => runAction($('#toggleVis'), 'Mise à jour…', async () => {
       const nextVis = r.visibility === 'public' ? 'private' : 'public';
-      try {
-        ok(await db.from('recipes').update({ visibility: nextVis, updated_at: new Date().toISOString() }).eq('id', r.id).eq('owner_id', ME.id));
-        toast(nextVis === 'public' ? 'Recette désormais publique' : 'Recette passée en privée');
-        viewRecipe(r.id);
-      } catch (ex) {
-        toast(ex.message, true);
-        btn.disabled = false;
-      }
-    };
+      await safeMutate(async () => ok(await db.from('recipes').update({ visibility: nextVis, updated_at: new Date().toISOString() }).eq('id', r.id).eq('owner_id', ME.id)));
+      toast(nextVis === 'public' ? 'Recette désormais publique' : 'Recette passée en privée');
+      viewRecipe(r.id);
+    });
 
     $('#del').onclick = () => confirmDialog({
       title: 'Supprimer cette recette ?',
       name: r.title,
       text: 'Cette action est définitive : la recette et sa liste d’ingrédients seront supprimées. Les éventuelles copies réalisées par d’autres membres resteront intactes.',
       onConfirm: async () => {
-        const rows = ok(await db.from('recipes').delete().eq('id', id).eq('owner_id', ME.id).select('id'));
-        if (!rows.length) throw new Error('Suppression refusée.');
+        await safeMutate(async () => {
+          const rows = ok(await db.from('recipes').delete().eq('id', id).eq('owner_id', ME.id).select('id'));
+          if (!rows.length) throw new Error('Suppression refusée.');
+        }, 'La suppression');
         if (r.cover_path && r.cover_url) {
           const { count } = await db.from('recipes').select('id', { count: 'exact', head: true }).eq('cover_url', r.cover_url);
-          if (!count) await db.storage.from('recipe-photos').remove([r.cover_path]);
+          if (!count) await db.storage.from('recipe-photos').remove([r.cover_path]).catch(() => {});
         }
         toast('Recette supprimée');
         location.hash = '#/mes-recettes';
       }
     });
   } else if (ME && !existingCopyId) {
-    $('#copyBtn').onclick = async () => {
-      const btn = $('#copyBtn');
-      btn.disabled = true; btn.textContent = 'Copie en cours…';
-      try {
-        let newCoverUrl = null, newCoverPath = null;
-        if (r.cover_url) {
-          try {
-            const resp = await fetch(r.cover_url);
-            if (resp.ok) {
-              const blob = await resp.blob();
-              const path = `${ME.id}/${crypto.randomUUID()}.jpg`;
-              const up = await db.storage.from('recipe-photos').upload(path, blob, { contentType: blob.type || 'image/jpeg' });
-              if (!up.error) {
-                newCoverPath = path;
-                newCoverUrl = db.storage.from('recipe-photos').getPublicUrl(path).data.publicUrl;
-              }
+    $('#copyBtn').onclick = () => runAction($('#copyBtn'), 'Copie en cours…', async () => {
+      let newCoverUrl = null, newCoverPath = null;
+      if (r.cover_url) {
+        try {
+          const resp = await withTimeout(fetch(r.cover_url), 10000);
+          if (resp.ok) {
+            const blob = await resp.blob();
+            const path = `${ME.id}/${crypto.randomUUID()}.jpg`;
+            const up = await withTimeout(db.storage.from('recipe-photos').upload(path, blob, { contentType: blob.type || 'image/jpeg' }), 15000);
+            if (!up.error) {
+              newCoverPath = path;
+              newCoverUrl = db.storage.from('recipe-photos').getPublicUrl(path).data.publicUrl;
             }
-          } catch (_) { /* Repli gracieux sur l'URL publique si le téléchargement échoue */ }
-        }
-
-        const newId = ok(await db.rpc('copy_recipe_to_library', {
-          p_source_id: r.id,
-          p_cover_url: newCoverUrl,
-          p_cover_path: newCoverPath
-        }));
-        toast('Recette ajoutée à votre bibliothèque !');
-        viewRecipe(r.id);
-      } catch (ex) {
-        toast(ex.message, true);
-        btn.disabled = false; btn.textContent = 'Ajouter à mes recettes';
+          }
+        } catch (_) {}
       }
-    };
+
+      await safeMutate(async () => ok(await db.rpc('copy_recipe_to_library', {
+        p_source_id: r.id,
+        p_cover_url: newCoverUrl,
+        p_cover_path: newCoverPath
+      })), 'La copie de la recette');
+      toast('Recette ajoutée à votre bibliothèque !');
+      viewRecipe(r.id);
+    });
   } else if (ME && existingCopyId) {
     $('#rmCopy').onclick = () => confirmDialog({
       title: 'Retirer de mes recettes ?',
@@ -1189,7 +1416,7 @@ async function viewRecipe(id) {
       text: 'Votre copie personnelle sera supprimée. La recette originale de son auteur ne sera pas affectée.',
       confirmLabel: 'Retirer',
       onConfirm: async () => {
-        ok(await db.from('recipes').delete().eq('id', existingCopyId).eq('owner_id', ME.id));
+        await safeMutate(async () => ok(await db.from('recipes').delete().eq('id', existingCopyId).eq('owner_id', ME.id)));
         toast('Recette retirée de votre bibliothèque');
         viewRecipe(r.id);
       }
@@ -1197,25 +1424,73 @@ async function viewRecipe(id) {
   }
 }
 
+/* ============ Brouillon local sécurisé par utilisateur ============ */
+function draftKey(recipeId) {
+  return ME ? `carnet_draft_${ME.id}_${recipeId || 'new'}` : null;
+}
+
+function saveDraft(recipeId) {
+  const k = draftKey(recipeId);
+  if (!k || !F) return;
+  try {
+    const payload = {
+      id: F.id || null,
+      title: F.title,
+      description: F.description,
+      category: F.category,
+      dish_type: F.dish_type,
+      visibility: F.visibility,
+      prep_min: F.prep_min,
+      cook_min: F.cook_min,
+      servings: F.servings,
+      rows: F.rows,
+      steps: F.steps,
+      notes: F.notes,
+      savedAt: Date.now()
+    };
+    localStorage.setItem(k, JSON.stringify(payload));
+  } catch (_) {}
+}
+
+function loadDraft(recipeId) {
+  const k = draftKey(recipeId);
+  if (!k) return null;
+  try {
+    const raw = localStorage.getItem(k);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (d && Date.now() - (d.savedAt || 0) < 24 * 3600 * 1000) return d;
+    localStorage.removeItem(k);
+  } catch (_) {}
+  return null;
+}
+
+function clearDraft(recipeId) {
+  const k = draftKey(recipeId);
+  if (!k) return;
+  try { localStorage.removeItem(k); } catch (_) {}
+}
+
 /* ============ Formulaire recette (Création & Modification) ============ */
-let F, ING_Q = '', ING_CAT = '';
+let F, ING_Q = '', ING_CAT = '', FORM_EDIT_ID = null;
 async function viewForm(id) {
   if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
+  FORM_EDIT_ID = id || null;
   await loadIng();
   ING_Q = ''; ING_CAT = '';
 
   if (id) {
-    const { data: r, error } = await db.from('recipes')
+    const { data: r, error } = await withTimeout(db.from('recipes')
       .select('*, recipe_ingredients(quantity, position, ingredient_id)')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle(), 15000);
 
     if (error || !r || r.owner_id !== ME.id) {
       app.innerHTML = `<div class="err">Accès refusé : vous ne pouvez modifier que vos propres recettes.</div>`;
       return;
     }
 
-    const nRes = await db.from('recipe_private_notes').select('notes').eq('recipe_id', r.id).maybeSingle();
+    const nRes = await withTimeout(db.from('recipe_private_notes').select('notes').eq('recipe_id', r.id).maybeSingle(), 10000);
     F = {
       ...r,
       steps: stepsToText(r.steps),
@@ -1225,6 +1500,7 @@ async function viewForm(id) {
     };
   } else {
     F = {
+      id: null,
       title: '',
       description: '',
       category: CATS.includes(CAT) ? CAT : '',
@@ -1242,10 +1518,24 @@ async function viewForm(id) {
     };
   }
 
+  const draft = loadDraft(FORM_EDIT_ID);
+  let hasDraft = false;
+  if (draft && (draft.title || draft.steps || draft.rows?.some(x => x.ingredient_id))) {
+    hasDraft = true;
+  }
+
   const ingCats = [...new Set(ING.map(i => i.category).filter(Boolean))];
   if (!ING.length) toast('Créez d’abord des ingrédients dans l’onglet Ingrédients', true);
 
-  app.innerHTML = `<h1 style="margin-bottom:18px">${id ? 'Modifier la recette' : 'Nouvelle recette'}</h1><div class="panel form">
+  app.innerHTML = `<h1 style="margin-bottom:18px">${id ? 'Modifier la recette' : 'Nouvelle recette'}</h1>
+    ${hasDraft ? `<div id="draftBanner" class="prov">
+      <span>Un brouillon non enregistré a été retrouvé pour ce formulaire.</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn sm pri" id="restoreDraft" type="button">Restaurer</button>
+        <button class="btn sm ghost" id="discardDraft" type="button">Ignorer</button>
+      </div>
+    </div>` : ''}
+    <div class="panel form">
     <label for="title">Titre *</label><input id="title" value="${esc(F.title)}">
     <div class="two">
       <div><label for="cat">Catégorie *</label><select id="cat"><option value="">Choisir…</option>${CATS.map(c => `<option ${c === F.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
@@ -1283,7 +1573,33 @@ async function viewForm(id) {
 
   $('#steps').value = F.steps;
   $('#notes').value = F.notes;
-  const bind = (sel, k) => $(sel).oninput = e => { F[k] = e.target.value; live(); };
+
+  if (hasDraft) {
+    $('#restoreDraft').onclick = () => {
+      Object.assign(F, draft, { file: F.file, cover_url: F.cover_url, cover_path: F.cover_path });
+      $('#title').value = F.title || '';
+      $('#cat').value = F.category || '';
+      $('#dish').value = F.dish_type || '';
+      $('#vis').value = F.visibility || 'private';
+      $('#desc').value = F.description || '';
+      $('#prep').value = F.prep_min ?? '';
+      $('#cook').value = F.cook_min ?? '';
+      $('#serv').value = F.servings ?? 4;
+      $('#steps').value = F.steps || '';
+      $('#notes').value = F.notes || '';
+      if (!Array.isArray(F.rows) || !F.rows.length) F.rows = [{ ingredient_id: '', quantity: '' }];
+      drawRows(); live();
+      $('#draftBanner').remove();
+      toast('Brouillon restauré');
+    };
+    $('#discardDraft').onclick = () => {
+      clearDraft(FORM_EDIT_ID);
+      $('#draftBanner').remove();
+    };
+  }
+
+  const persistDraftDebounced = debounce(() => saveDraft(FORM_EDIT_ID), 400);
+  const bind = (sel, k) => $(sel).oninput = e => { F[k] = e.target.value; live(); persistDraftDebounced(); };
   bind('#title', 'title'); bind('#cat', 'category'); bind('#dish', 'dish_type'); bind('#vis', 'visibility');
   bind('#desc', 'description'); bind('#prep', 'prep_min'); bind('#cook', 'cook_min'); bind('#serv', 'servings');
   bind('#steps', 'steps'); bind('#notes', 'notes');
@@ -1295,7 +1611,7 @@ async function viewForm(id) {
     F.file = e.target.files[0] || null;
     if (F.file) { $('#prev').src = URL.createObjectURL(F.file); $('#prev').hidden = false; }
   };
-  $('#addRow').onclick = () => { F.rows.push({ ingredient_id: '', quantity: '' }); drawRows(); };
+  $('#addRow').onclick = () => { F.rows.push({ ingredient_id: '', quantity: '' }); drawRows(); persistDraftDebounced(); };
   $('#save').onclick = saveRecipe;
   drawRows(); live();
 }
@@ -1327,8 +1643,9 @@ function drawRows() {
     if (d.n) { F.rows[d.n].ingredient_id = e.target.value; e.target.closest('.row').querySelector('.u').textContent = sfx(ING.find(x => x.id === e.target.value)); }
     if (d.q) F.rows[d.q].quantity = e.target.value;
     live();
+    saveDraft(FORM_EDIT_ID);
   };
-  $('#rows').onclick = e => { const n = e.target.dataset.rm; if (n !== undefined) { F.rows.splice(n, 1); drawRows(); live(); } };
+  $('#rows').onclick = e => { const n = e.target.dataset.rm; if (n !== undefined) { F.rows.splice(n, 1); drawRows(); live(); saveDraft(FORM_EDIT_ID); } };
 }
 
 function live() {
@@ -1345,7 +1662,6 @@ async function resize(file, maxDim = 1600) {
 }
 
 async function saveRecipe() {
-  if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
   const rows = F.rows.filter(x => x.ingredient_id || x.quantity !== '');
   if (!F.title.trim()) return toast('Le titre est obligatoire', true);
   if (!CATS.includes(F.category)) return toast('Choisissez une catégorie', true);
@@ -1353,65 +1669,75 @@ async function saveRecipe() {
   if (!rows.length) return toast('Ajoutez au moins un ingrédient', true);
   if (rows.some(x => !x.ingredient_id || num(x.quantity) <= 0)) return toast('Chaque ingrédient doit avoir une quantité supérieure à 0', true);
 
-  const btn = $('#save'); btn.disabled = true; btn.textContent = 'Enregistrement…';
-  try {
-    let { cover_url, cover_path } = F, oldPath = null;
-    if (F.file) {
-      const path = `${ME.id}/${crypto.randomUUID()}.jpg`;
-      const up = await db.storage.from('recipe-photos').upload(path, await resize(F.file), { contentType: 'image/jpeg' });
-      if (up.error) throw new Error('Envoi de la photo impossible : ' + up.error.message);
-      oldPath = F.cover_path;
-      cover_path = path;
-      cover_url = db.storage.from('recipe-photos').getPublicUrl(path).data.publicUrl;
-    }
+  // Sauvegarde immédiate en brouillon avant tout appel réseau
+  saveDraft(FORM_EDIT_ID);
 
-    const prep = F.steps && F.steps.trim() ? F.steps : '';
-    const rec = {
-      owner_id: ME.id,
-      title: F.title.trim(),
-      description: (F.description || '').trim(),
-      category: F.category,
-      dish_type: (F.dish_type || '').trim(),
-      visibility: F.visibility === 'public' ? 'public' : 'private',
-      cover_url,
-      cover_path,
-      prep_min: Math.round(num(F.prep_min)),
-      cook_min: Math.round(num(F.cook_min)),
-      servings: Math.round(num(F.servings)),
-      steps: prep ? [prep] : [],
-      notes: null,
-      updated_at: new Date().toISOString()
-    };
+  await runAction($('#save'), 'Enregistrement…', async () => {
+    await safeMutate(async () => {
+      let { cover_url, cover_path } = F, oldPath = null;
+      if (F.file) {
+        const path = `${ME.id}/${crypto.randomUUID()}.jpg`;
+        const up = await db.storage.from('recipe-photos').upload(path, await resize(F.file), { contentType: 'image/jpeg' });
+        if (up.error) throw new Error('Envoi de la photo impossible : ' + up.error.message);
+        oldPath = F.cover_path;
+        cover_path = path;
+        cover_url = db.storage.from('recipe-photos').getPublicUrl(path).data.publicUrl;
+        F.cover_url = cover_url;
+        F.cover_path = cover_path;
+        F.file = null;
+      }
 
-    let id = F.id;
-    if (id) {
-      const updated = ok(await db.from('recipes').update(rec).eq('id', id).eq('owner_id', ME.id).select('id'));
-      if (!updated.length) throw new Error('Modification refusée : vous n’êtes pas propriétaire de cette recette.');
-    } else {
-      id = ok(await db.from('recipes').insert(rec).select('id').single()).id;
-    }
+      const prep = F.steps && F.steps.trim() ? F.steps : '';
+      const rec = {
+        owner_id: ME.id,
+        title: F.title.trim(),
+        description: (F.description || '').trim(),
+        category: F.category,
+        dish_type: (F.dish_type || '').trim(),
+        visibility: F.visibility === 'public' ? 'public' : 'private',
+        cover_url,
+        cover_path,
+        prep_min: Math.round(num(F.prep_min)),
+        cook_min: Math.round(num(F.cook_min)),
+        servings: Math.round(num(F.servings)),
+        steps: prep ? [prep] : [],
+        notes: null,
+        updated_at: new Date().toISOString()
+      };
 
-    ok(await db.from('recipe_ingredients').delete().eq('recipe_id', id));
-    ok(await db.from('recipe_ingredients').insert(rows.map((x, n) => ({
-      recipe_id: id, ingredient_id: x.ingredient_id, quantity: num(x.quantity), position: n
-    }))));
+      let id = F.id;
+      if (id) {
+        const updated = ok(await db.from('recipes').update(rec).eq('id', id).eq('owner_id', ME.id).select('id'));
+        if (!updated || !updated.length) throw new Error('Modification refusée : vous n’êtes pas propriétaire de cette recette.');
+      } else {
+        const inserted = ok(await db.from('recipes').insert(rec).select('id').single());
+        id = inserted.id;
+        // Mémorise l'ID immédiatement : un nouvel essai après coupure réseau mettra à jour sans créer de doublon
+        F.id = id;
+        saveDraft(FORM_EDIT_ID);
+      }
 
-    const cleanNotes = (F.notes || '').trim();
-    if (cleanNotes) {
-      ok(await db.from('recipe_private_notes').upsert({
-        recipe_id: id, owner_id: ME.id, notes: F.notes, updated_at: new Date().toISOString()
-      }));
-    } else {
-      await db.from('recipe_private_notes').delete().eq('recipe_id', id).eq('owner_id', ME.id);
-    }
+      ok(await db.from('recipe_ingredients').delete().eq('recipe_id', id));
+      ok(await db.from('recipe_ingredients').insert(rows.map((x, n) => ({
+        recipe_id: id, ingredient_id: x.ingredient_id, quantity: num(x.quantity), position: n
+      }))));
 
-    if (oldPath) await db.storage.from('recipe-photos').remove([oldPath]);
+      const cleanNotes = (F.notes || '').trim();
+      if (cleanNotes) {
+        ok(await db.from('recipe_private_notes').upsert({
+          recipe_id: id, owner_id: ME.id, notes: F.notes, updated_at: new Date().toISOString()
+        }));
+      } else {
+        await db.from('recipe_private_notes').delete().eq('recipe_id', id).eq('owner_id', ME.id);
+      }
+
+      if (oldPath) await db.storage.from('recipe-photos').remove([oldPath]).catch(() => {});
+    }, 'L’enregistrement de la recette');
+
+    clearDraft(FORM_EDIT_ID);
     toast('Recette enregistrée');
-    location.hash = '#/recette/' + id;
-  } catch (e) {
-    toast(e.message, true);
-    btn.disabled = false; btn.textContent = 'Enregistrer la recette';
-  }
+    location.hash = '#/recette/' + F.id;
+  });
 }
 
 /* ============ Ingrédients ============ */
@@ -1421,7 +1747,7 @@ async function viewIng() {
   let editing = null, filter = '', catFilter = '', shown = 50;
   const ingCats = [...new Set(['Fruits', 'Légumes', 'Viandes et volailles', 'Poissons et fruits de mer', 'Produits laitiers et œufs', 'Féculents, céréales et légumineuses', 'Herbes aromatiques et épices', 'Huiles, vinaigres et condiments', 'Produits sucrés et pâtisserie', 'Fruits à coque et graines', 'Conserves et produits pratiques', 'Alternatives végétales et cuisine du monde', 'Boissons, vins et alcools', ...ING.map(i => i.category).filter(Boolean)])];
 
-  app.innerHTML = `<h1 style="margin-bottom:6px">Ingrédients (${ING.length})</h1><p class="muted" style="margin:0 0 18px">Valeurs nutritionnelles pour 100 g, pour 100 ml ou par pièce (1 tomate, 1 œuf…).</p>
+  app.innerHTML = `<h1 id="ingTitle" style="margin-bottom:6px">Ingrédients (${ING.length})</h1><p class="muted" style="margin:0 0 18px">Valeurs nutritionnelles pour 100 g, pour 100 ml ou par pièce (1 tomate, 1 œuf…).</p>
   <div class="panel form"><h2 id="ft">Nouvel ingrédient</h2>
     <div class="three">
       <div><label for="n">Nom *</label><input id="n"></div>
@@ -1445,6 +1771,7 @@ async function viewIng() {
     $('#ft').textContent = 'Nouvel ingrédient'; $('#sv').textContent = 'Ajouter l’ingrédient'; $('#sv').disabled = false; $('#cn').hidden = true;
   };
   const draw = () => {
+    if ($('#ingTitle')) $('#ingTitle').textContent = `Ingrédients (${ING.length})`;
     const q = norm(filter);
     const l = ING.filter(i => (!catFilter || i.category === catFilter) && (!q || norm(i.name).includes(q)));
     const slice = l.slice(0, shown);
@@ -1460,26 +1787,26 @@ async function viewIng() {
   $('#scat').onchange = e => { catFilter = e.target.value; shown = 50; draw(); };
   $('#u').onchange = e => { $('#ulw').hidden = e.target.value !== 'piece'; };
   $('#cn').onclick = reset;
-  $('#sv').onclick = async () => {
+  $('#sv').onclick = () => {
     const name = $('#n').value.trim(); if (!name) return toast('Le nom est obligatoire', true);
     const v = { name, category: $('#icat').value || null, unit: $('#u').value, kcal: num($('#k').value), protein: num($('#p').value), carbs: num($('#c').value), fat: num($('#f').value) };
     if (Object.values(v).some(x => typeof x === 'number' && x < 0)) return toast('Les valeurs ne peuvent pas être négatives', true);
-    const btn = $('#sv'); btn.disabled = true; btn.textContent = 'Enregistrement…';
-    try {
-      if (editing) {
-        const rows = ok(await db.from('ingredients').update(v).eq('id', editing).select('id'));
-        if (!rows || !rows.length) throw new Error('Modification refusée : cet ingrédient appartient à un autre compte.');
-        toast('Ingrédient modifié');
-      } else {
-        ok(await db.from('ingredients').insert({ ...v, created_by: ME.id }));
-        toast('Ingrédient ajouté');
-      }
-      reset(); await loadIng(); draw();
-    } catch (e) {
-      toast(e.message, true);
-      btn.disabled = false;
-      btn.textContent = editing ? 'Enregistrer' : 'Ajouter l’ingrédient';
-    }
+
+    runAction($('#sv'), 'Enregistrement…', async () => {
+      await safeMutate(async () => {
+        if (editing) {
+          const rows = ok(await db.from('ingredients').update(v).eq('id', editing).select('id'));
+          if (!rows || !rows.length) throw new Error('Modification refusée : cet ingrédient appartient à un autre compte.');
+          toast('Ingrédient modifié');
+        } else {
+          ok(await db.from('ingredients').insert({ ...v, created_by: ME.id }));
+          toast('Ingrédient ajouté');
+        }
+      }, 'L’enregistrement de l’ingrédient');
+      reset();
+      await loadIng();
+      draw();
+    });
   };
   $('#list').onclick = async e => {
     const btn = e.target.closest('button'); if (!btn) return;
@@ -1497,8 +1824,10 @@ async function viewIng() {
         title: 'Supprimer cet ingrédient ?', name: i.name,
         text: 'Cette action est définitive. La suppression est refusée si l’ingrédient est utilisé dans une recette.',
         onConfirm: async () => {
-          const rows = ok(await db.from('ingredients').delete().eq('id', did).select('id'));
-          if (!rows.length) throw new Error('Suppression non autorisée ou ingrédient utilisé.');
+          await safeMutate(async () => {
+            const rows = ok(await db.from('ingredients').delete().eq('id', did).select('id'));
+            if (!rows.length) throw new Error('Suppression non autorisée ou ingrédient utilisé.');
+          }, 'La suppression de l’ingrédient');
           toast('Ingrédient supprimé');
           await loadIng(); draw();
         }
