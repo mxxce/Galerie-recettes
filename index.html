@@ -1322,6 +1322,89 @@ function drawRows() {
   $('#rows').onclick = e => { const n = e.target.dataset.rm; if (n !== undefined) { F.rows.splice(n, 1); drawRows(); live(); } };
 }
 
+function live() {
+  const r = { recipe_ingredients: F.rows.filter(x => x.ingredient_id && num(x.quantity) > 0).map(x => ({ quantity: num(x.quantity), ingredients: ING.find(i => i.id === x.ingredient_id) })) };
+  const s = Math.max(1, Math.round(num(F.servings)));
+  $('#live').innerHTML = `<span></span><small>kcal</small><small>Protéines (g)</small><small>Glucides (g)</small><small>Lipides (g)</small><small>Total</small>${nutBlock(totals(r), 1)}<small>Par portion</small>${nutBlock(totals(r), s)}`;
+}
+
+async function resize(file, maxDim = 1600) {
+  const img = await createImageBitmap(file), k = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const c = document.createElement('canvas'); c.width = img.width * k; c.height = img.height * k;
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', .85));
+}
+
+async function saveRecipe() {
+  if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
+  const rows = F.rows.filter(x => x.ingredient_id || x.quantity !== '');
+  if (!F.title.trim()) return toast('Le titre est obligatoire', true);
+  if (!CATS.includes(F.category)) return toast('Choisissez une catégorie', true);
+  if (num(F.servings) < 1) return toast('Indiquez au moins 1 portion', true);
+  if (!rows.length) return toast('Ajoutez au moins un ingrédient', true);
+  if (rows.some(x => !x.ingredient_id || num(x.quantity) <= 0)) return toast('Chaque ingrédient doit avoir une quantité supérieure à 0', true);
+
+  const btn = $('#save'); btn.disabled = true; btn.textContent = 'Enregistrement…';
+  try {
+    let { cover_url, cover_path } = F, oldPath = null;
+    if (F.file) {
+      const path = `${ME.id}/${crypto.randomUUID()}.jpg`;
+      const up = await db.storage.from('recipe-photos').upload(path, await resize(F.file), { contentType: 'image/jpeg' });
+      if (up.error) throw new Error('Envoi de la photo impossible : ' + up.error.message);
+      oldPath = F.cover_path;
+      cover_path = path;
+      cover_url = db.storage.from('recipe-photos').getPublicUrl(path).data.publicUrl;
+    }
+
+    const prep = F.steps && F.steps.trim() ? F.steps : '';
+    const rec = {
+      owner_id: ME.id,
+      title: F.title.trim(),
+      description: (F.description || '').trim(),
+      category: F.category,
+      dish_type: (F.dish_type || '').trim(),
+      visibility: F.visibility === 'public' ? 'public' : 'private',
+      cover_url,
+      cover_path,
+      prep_min: Math.round(num(F.prep_min)),
+      cook_min: Math.round(num(F.cook_min)),
+      servings: Math.round(num(F.servings)),
+      steps: prep ? [prep] : [],
+      notes: null,
+      updated_at: new Date().toISOString()
+    };
+
+    let id = F.id;
+    if (id) {
+      const updated = ok(await db.from('recipes').update(rec).eq('id', id).eq('owner_id', ME.id).select('id'));
+      if (!updated.length) throw new Error('Modification refusée : vous n’êtes pas propriétaire de cette recette.');
+    } else {
+      id = ok(await db.from('recipes').insert(rec).select('id').single()).id;
+    }
+
+    ok(await db.from('recipe_ingredients').delete().eq('recipe_id', id));
+    ok(await db.from('recipe_ingredients').insert(rows.map((x, n) => ({
+      recipe_id: id, ingredient_id: x.ingredient_id, quantity: num(x.quantity), position: n
+    }))));
+
+    const cleanNotes = (F.notes || '').trim();
+    if (cleanNotes) {
+      ok(await db.from('recipe_private_notes').upsert({
+        recipe_id: id, owner_id: ME.id, notes: F.notes, updated_at: new Date().toISOString()
+      }));
+    } else {
+      await db.from('recipe_private_notes').delete().eq('recipe_id', id).eq('owner_id', ME.id);
+    }
+
+    if (oldPath) await db.storage.from('recipe-photos').remove([oldPath]);
+    toast('Recette enregistrée');
+    location.hash = '#/recette/' + id;
+  } catch (e) {
+    toast(e.message, true);
+    btn.disabled = false; btn.textContent = 'Enregistrer la recette';
+  }
+}
+
 /* ============ Ingrédients ============ */
 async function viewIng() {
   if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
