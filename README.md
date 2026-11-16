@@ -50,3 +50,7 @@ Sans connexion, quiconque connaît l’adresse du site et la clé `anon` peut mo
 1. Exécutez `supabase_migration_v3.sql` dans Supabase > SQL Editor (sans perte de données).
 2. Remplacez `index.html` dans votre dépôt GitHub.
 3. En mode « Par quantité », les valeurs saisies correspondent à **1 unité de l’ingrédient** (1 aubergine, 1 œuf…). Dans la recette, saisissez 0,5, 1, 2… ; le nom de l’ingrédient fait office d’unité.
+
+## Mise à jour V4 (suppression fiable sur mobile)
+
+Remplacez simplement `index.html` : aucune migration SQL n’est nécessaire. La confirmation est désormais une fenêtre intégrée à l’application (en bas d’écran sur téléphone). Supprimer un ingrédient utilisé dans des recettes indique lesquelles, puis le retire de ces recettes.

@@ -53,6 +53,13 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .form label{display:block;font-weight:700;font-size:.92rem;margin:14px 0 6px}
 .two,.three{display:grid;gap:14px}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}
 .row{display:grid;grid-template-columns:1fr 170px 44px;gap:10px;margin-bottom:10px;align-items:center}
+.mo{position:fixed;inset:0;z-index:100;background:rgba(36,48,32,.55);display:flex;align-items:center;justify-content:center;padding:20px;animation:fade .15s}
+.md{background:#fff;border-radius:24px;width:100%;max-width:440px;max-height:90vh;overflow:auto;padding:26px 24px 22px;box-shadow:0 24px 60px -20px rgba(0,0,0,.45);animation:pop .18s ease-out}
+.md h2{font-size:1.4rem;margin-bottom:12px}.md p{margin:0;color:var(--mute)}.md .warn{color:var(--accent);margin-top:10px}
+.md .nm{background:var(--bg);border-left:4px solid var(--accent);border-radius:10px;padding:10px 14px;font-weight:700;margin-bottom:14px;overflow-wrap:anywhere}
+.md .err{margin-top:14px}.mb{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}.mb .btn{min-height:48px;padding:12px 22px}
+.btn.danger{background:#C62828;color:#fff}.btn:disabled{opacity:.6;cursor:default}
+@keyframes fade{from{opacity:0}to{opacity:1}}@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}
 .qw{position:relative}.qw input{padding-right:78px}
 .qw .u{position:absolute;right:12px;top:50%;transform:translateY(-50%);max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mute);font-size:.85rem;pointer-events:none}
 .cats{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
@@ -63,11 +70,11 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .x{border:0;background:#F0E3E3;color:var(--accent);border-radius:12px;height:44px;cursor:pointer;font-size:1.1rem}
 .cover{width:100%;max-width:360px;aspect-ratio:4/3;object-fit:cover;border-radius:18px;display:block;margin-bottom:10px}
 .irow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;z-index:20}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;z-index:200;width:max-content;max-width:90vw;text-align:center}
 .toast.e{background:var(--accent)}
-@media(max-width:620px){.two,.three{grid-template-columns:1fr}.row{grid-template-columns:1fr 44px}.row .x{grid-column:2;grid-row:1/3}.row.s .x{grid-row:auto}.cats{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.pill{white-space:nowrap;flex:none}.bar{padding:8px 14px;gap:6px}.logo{font-size:1.05rem;width:100%}nav a{padding:6px 12px;font-size:.92rem}main{padding:20px 14px 70px}.find{margin-bottom:18px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{border-radius:16px}.ph{font-size:1.8rem}.cb{padding:10px 11px 12px}.cb h3{font-size:.98rem;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.meta{font-size:.76rem;gap:1px 8px}.miss,.ok{font-size:.76rem;margin-top:6px}.hero{aspect-ratio:4/3}.nut{grid-template-columns:auto repeat(4,minmax(60px,1fr))}}
+@media(max-width:620px){.two,.three{grid-template-columns:1fr}.row{grid-template-columns:1fr 44px}.row .x{grid-column:2;grid-row:1/3}.row.s .x{grid-row:auto}.cats{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.pill{white-space:nowrap;flex:none}.bar{padding:8px 14px;gap:6px}.logo{font-size:1.05rem;width:100%}nav a{padding:6px 12px;font-size:.92rem}main{padding:20px 14px 70px}.find{margin-bottom:18px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{border-radius:16px}.ph{font-size:1.8rem}.cb{padding:10px 11px 12px}.cb h3{font-size:.98rem;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.meta{font-size:.76rem;gap:1px 8px}.miss,.ok{font-size:.76rem;margin-top:6px}.actions .btn{flex:1;min-height:46px;display:inline-flex;align-items:center;justify-content:center}.irow{grid-template-columns:1fr}.irow .actions{width:100%}.mo{align-items:flex-end;padding:0}.md{max-width:none;border-radius:24px 24px 0 0;padding:24px 20px calc(20px + env(safe-area-inset-bottom,0px))}.mb{flex-direction:column-reverse}.mb .btn{width:100%;min-height:54px;font-size:1.05rem}.hero{aspect-ratio:4/3}.nut{grid-template-columns:auto repeat(4,minmax(60px,1fr))}}
 @media(max-width:340px){.grid{grid-template-columns:1fr}}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}.mo,.md{animation:none!important}}
 </style>
 </head>
 <body>
@@ -103,6 +110,35 @@ const refText = i => i.unit === 'piece' ? `1 ${i.name.toLowerCase()}` : `100 ${i
 const sfx = i => !i ? '' : i.unit === 'piece' ? 'unité(s)' : i.unit;                   // unité affichée dans le champ quantité
 const qtyLabel = (i, q) => i.unit === 'piece' ? `${fmt(q)} × ${i.name.toLowerCase()}` : `${fmt(q)} ${i.unit}`;
 const loadIng = async () => { ING = ok(await db.from('ingredients').select('*').order('name')); };
+
+/* ============ Fenêtre de confirmation de suppression ============
+   Remplace window.confirm (souvent bloqué sur mobile). Sur téléphone elle s'ouvre en bas d'écran.
+   onConfirm() doit supprimer réellement ; s'il lève une erreur, elle est affichée dans la fenêtre. */
+function confirmDelete({ title, name, text, warn, onConfirm }) {
+  const prevFocus = document.activeElement, prevOverflow = document.body.style.overflow;
+  const el = document.createElement('div'); el.className = 'mo';
+  el.innerHTML = `<div class="md" role="alertdialog" aria-modal="true" aria-labelledby="mdt" aria-describedby="mdd"><h2 id="mdt">${esc(title)}</h2>
+    <div class="nm">${esc(name)}</div><p id="mdd">${esc(text)}</p>${warn ? `<p class="warn">${esc(warn)}</p>` : ''}
+    <div class="err" id="mderr" role="alert" hidden></div>
+    <div class="mb"><button class="btn ghost" id="mdno" type="button">Annuler</button><button class="btn danger" id="mdyes" type="button">Supprimer</button></div></div>`;
+  const no = el.querySelector('#mdno'), yes = el.querySelector('#mdyes'), err = el.querySelector('#mderr');
+  let busy = false;
+  const onKey = e => {
+    if (e.key === 'Escape' && !busy) close();
+    if (e.key === 'Tab') { e.preventDefault(); const b = [no, yes].filter(x => !x.disabled); if (!b.length) return; b[(b.indexOf(document.activeElement) + (e.shiftKey ? -1 : 1) + b.length) % b.length].focus(); }
+  };
+  const close = () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow; el.remove(); if (prevFocus && document.contains(prevFocus)) prevFocus.focus(); };
+  no.onclick = () => { if (!busy) close(); };
+  el.onclick = e => { if (e.target === el && !busy) close(); };            // toucher le fond = annuler
+  yes.onclick = async () => {
+    if (busy) return; busy = true; yes.disabled = no.disabled = true; yes.textContent = 'Suppression…'; err.hidden = true;
+    try { await onConfirm(); close(); }
+    catch (e) { busy = false; yes.disabled = no.disabled = false; yes.textContent = 'Réessayer'; err.textContent = 'La suppression a échoué : ' + e.message; err.hidden = false; }
+  };
+  document.body.append(el); document.body.style.overflow = 'hidden'; document.addEventListener('keydown', onKey);
+  no.focus();                                                                // focus sur « Annuler » par défaut
+}
+const deleted = res => { const rows = ok(res); if (!rows.length) throw new Error('aucune ligne supprimée dans la base'); return rows; };
 
 /* ============ Routeur ============ */
 async function route() {
@@ -172,14 +208,14 @@ async function viewRecipe(id) {
   <div class="panel"><h2>Ingrédients</h2>${ris.length ? `<ul class="ing">${ris.map(x => `<li><span>${esc(x.ingredients.name)}</span><b>${qtyLabel(x.ingredients, x.quantity)}</b></li>`).join('')}</ul>` : '<p class="muted">Aucun ingrédient.</p>'}</div>
   <div class="panel"><h2>Préparation</h2>${r.steps.length ? `<ol class="steps">${r.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : '<p class="muted">Aucune étape.</p>'}</div>
   ${r.notes ? `<div class="panel"><h2>Notes</h2><p style="white-space:pre-wrap;margin:0">${esc(r.notes)}</p></div>` : ''}`;
-  $('#del').onclick = async () => {
-    if (!confirm(`Supprimer définitivement « ${r.title} » ?`)) return;
-    try {
-      if (r.cover_path) await db.storage.from('recipe-photos').remove([r.cover_path]);
-      ok(await db.from('recipes').delete().eq('id', id));
+  $('#del').onclick = () => confirmDelete({
+    title: 'Supprimer cette recette ?', name: r.title,
+    text: 'Cette action est définitive : la recette, sa liste d’ingrédients et sa photo seront supprimées.',
+    onConfirm: async () => {
+      deleted(await db.from('recipes').delete().eq('id', id).select('id'));      // les lignes recipe_ingredients suivent (on delete cascade)
+      if (r.cover_path) await db.storage.from('recipe-photos').remove([r.cover_path]); // photo supprimée seulement si la recette l'est
       toast('Recette supprimée'); location.hash = '#/';
-    } catch (e) { toast(e.message, true); }
-  };
+    } });
 }
 
 /* ============ Formulaire recette (création et modification) ============ */
@@ -293,10 +329,21 @@ async function viewIng() {
     } catch (e) { toast(e.message, true); }
   };
   $('#list').onclick = async e => {
-    const { e: eid, d: did } = e.target.dataset;
+    const btn = e.target.closest('button'); if (!btn) return; const { e: eid, d: did } = btn.dataset;
     if (eid) { const i = ING.find(x => x.id === eid); editing = eid; $('#n').value = i.name; $('#u').value = i.unit; $('#ulw').hidden = i.unit !== 'piece'; $('#k').value = i.kcal; $('#p').value = i.protein; $('#c').value = i.carbs; $('#f').value = i.fat; $('#ft').textContent = 'Modifier l’ingrédient'; $('#sv').textContent = 'Enregistrer'; $('#cn').hidden = false; window.scrollTo(0, 0); }
-    if (did) { const i = ING.find(x => x.id === did); if (!confirm(`Supprimer « ${i.name} » ?`)) return;
-      try { ok(await db.from('ingredients').delete().eq('id', did)); toast('Ingrédient supprimé'); await loadIng(); draw(); } catch (er) { toast(er.message, true); } }
+    if (did) {
+      const i = ING.find(x => x.id === did); let uses;
+      try { uses = ok(await db.from('recipe_ingredients').select('recipe_id, recipes(title)').eq('ingredient_id', did)); } catch (er) { return toast(er.message, true); }
+      const titles = [...new Set(uses.map(u => u.recipes?.title).filter(Boolean))], n = titles.length;
+      confirmDelete({
+        title: 'Supprimer cet ingrédient ?', name: i.name, text: 'Cette action est définitive.',
+        warn: uses.length ? `Utilisé dans ${n} recette${n > 1 ? 's' : ''} : ${titles.join(', ')}. Il sera retiré de ${n > 1 ? 'ces recettes' : 'cette recette'} et leurs valeurs nutritionnelles seront recalculées.` : '',
+        onConfirm: async () => {
+          if (uses.length) deleted(await db.from('recipe_ingredients').delete().eq('ingredient_id', did).select('id'));
+          deleted(await db.from('ingredients').delete().eq('id', did).select('id'));
+          toast('Ingrédient supprimé'); await loadIng(); draw();
+        } });
+    }
   };
   draw();
 }
