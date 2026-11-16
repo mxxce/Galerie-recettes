@@ -165,7 +165,16 @@ const CATS = ['Apéro', 'Entrée', 'Plat', 'Dessert', 'Boissons'];
 const refText = i => i.unit === 'piece' ? `1 ${i.name.toLowerCase()}` : `100 ${i.unit}`;
 const sfx = i => !i ? '' : i.unit === 'piece' ? 'unité(s)' : i.unit;
 const qtyLabel = (i, q) => i.unit === 'piece' ? `${fmt(q)} × ${i.name.toLowerCase()}` : `${fmt(q)} ${i.unit}`;
-const loadIng = async () => { ING = ok(await db.from('ingredients').select('*').order('name')); };
+const loadIng = async () => {
+  let all = [], from = 0, step = 1000;
+  while (true) {
+    const rows = ok(await db.from('ingredients').select('*').order('name').range(from, from + step - 1));
+    all = all.concat(rows || []);
+    if (!rows || rows.length < step) break;
+    from += step;
+  }
+  ING = all;
+};
 
 function totals(r) {
   const t = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
@@ -1410,7 +1419,7 @@ async function viewIng() {
   if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
   await loadIng();
   let editing = null, filter = '', catFilter = '', shown = 50;
-  const ingCats = [...new Set(['Fruits', 'Légumes', 'Viandes et volailles', 'Poissons et fruits de mer', 'Produits laitiers et œufs', 'Féculents, céréales et légumineuses', 'Herbes aromatiques et épices', 'Huiles, vinaigres et condiments', 'Produits sucrés et pâtisserie', 'Fruits à coque et graines', 'Conserves et produits pratiques', 'Alternatives végétales et cuisine du monde', ...ING.map(i => i.category).filter(Boolean)])];
+  const ingCats = [...new Set(['Fruits', 'Légumes', 'Viandes et volailles', 'Poissons et fruits de mer', 'Produits laitiers et œufs', 'Féculents, céréales et légumineuses', 'Herbes aromatiques et épices', 'Huiles, vinaigres et condiments', 'Produits sucrés et pâtisserie', 'Fruits à coque et graines', 'Conserves et produits pratiques', 'Alternatives végétales et cuisine du monde', 'Boissons, vins et alcools', ...ING.map(i => i.category).filter(Boolean)])];
 
   app.innerHTML = `<h1 style="margin-bottom:6px">Ingrédients (${ING.length})</h1><p class="muted" style="margin:0 0 18px">Valeurs nutritionnelles pour 100 g, pour 100 ml ou par pièce (1 tomate, 1 œuf…).</p>
   <div class="panel form"><h2 id="ft">Nouvel ingrédient</h2>
