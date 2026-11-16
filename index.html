@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon carnet de recettes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700&family=Young+Serif&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F5F7EF;--ink:#243020;--mute:#6A7563;--line:#DDE3D0;--card:#fff;--accent:#A8283A;--accent2:#E9A93A;--r:22px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Figtree,system-ui,sans-serif}
+h1,h2,h3{font-family:"Young Serif",Georgia,serif;font-weight:400;line-height:1.2;margin:0}
+a{color:inherit;text-decoration:none}
+header{position:sticky;top:0;z-index:5;background:rgba(245,247,239,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar{max-width:1100px;margin:auto;padding:12px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.logo{font-family:"Young Serif",serif;font-size:1.25rem;margin-right:auto}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+nav a{padding:8px 16px;border-radius:99px;font-weight:500}
+nav a.on{background:var(--ink);color:#fff}
+nav a.add{background:var(--accent);color:#fff}
+main{max-width:1100px;margin:auto;padding:28px 20px 80px}
+.find{margin-bottom:28px}.find h1{font-size:clamp(1.7rem,4vw,2.5rem);margin-bottom:16px}
+.searchrow{display:flex;gap:10px;flex-wrap:wrap}
+input,select,textarea{font:inherit;color:inherit;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;width:100%}
+input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outline:3px solid var(--accent2);outline-offset:1px}
+.searchrow input{flex:1;min-width:240px}
+.btn{font:inherit;font-weight:700;border:0;border-radius:14px;padding:11px 20px;background:var(--ink);color:#fff;cursor:pointer}
+.btn.pri{background:var(--accent)}.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}.btn.del{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px}
+.card{background:var(--card);border-radius:var(--r);overflow:hidden;display:block;box-shadow:0 1px 0 var(--line),0 8px 24px -16px rgba(36,48,32,.35);transition:transform .2s}
+.card:hover{transform:translateY(-3px)}
+.ph{aspect-ratio:4/3;background:linear-gradient(135deg,#E6EBD6,#F3E2B7);display:grid;place-items:center;font-size:2.5rem}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.cb{padding:16px 18px 18px}.cb h3{font-size:1.2rem;margin-bottom:8px}
+.meta{display:flex;gap:6px 14px;flex-wrap:wrap;color:var(--mute);font-size:.9rem}
+.miss{margin-top:10px;font-size:.88rem;color:var(--accent)}.ok{color:#3C7A3C;font-weight:700;font-size:.88rem;margin-top:10px}
+.muted{color:var(--mute)}.empty{padding:40px;text-align:center;color:var(--mute);background:#fff;border-radius:var(--r)}
+.err{background:#FBE4E4;color:#7A1F1F;padding:14px 18px;border-radius:14px}
+.hero{border-radius:28px;overflow:hidden;aspect-ratio:21/9;background:linear-gradient(135deg,#E6EBD6,#F3E2B7);display:grid;place-items:center;font-size:4rem}
+.hero img{width:100%;height:100%;object-fit:cover}
+.rtitle{font-size:clamp(1.9rem,5vw,3rem);margin:24px 0 12px}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+.chip{background:#fff;border:1.5px solid var(--line);border-radius:99px;padding:6px 16px;font-weight:500}
+.actions{display:flex;gap:10px;margin-bottom:24px}
+.panel{background:#fff;border-radius:var(--r);padding:22px;margin-bottom:22px}
+.panel h2{font-size:1.35rem;margin-bottom:14px}
+.nut{display:grid;grid-template-columns:auto repeat(4,1fr);gap:8px 14px;align-items:baseline;overflow-x:auto}
+.nut b{font-family:"Young Serif",serif;font-weight:400;font-size:1.25rem}.nut small{color:var(--mute)}
+.ing{list-style:none;padding:0;margin:0}.ing li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.steps{padding-left:22px;margin:0}.steps li{padding:6px 0 6px 6px}.steps li::marker{color:var(--accent);font-weight:700}
+.form label{display:block;font-weight:700;font-size:.92rem;margin:14px 0 6px}
+.two,.three{display:grid;gap:14px}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}
+.row{display:grid;grid-template-columns:1fr 120px 44px;gap:10px;margin-bottom:10px;align-items:center}
+.row.s{grid-template-columns:1fr 44px;align-items:start}
+.x{border:0;background:#F0E3E3;color:var(--accent);border-radius:12px;height:44px;cursor:pointer;font-size:1.1rem}
+.cover{width:100%;max-width:360px;aspect-ratio:4/3;object-fit:cover;border-radius:18px;display:block;margin-bottom:10px}
+.irow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;z-index:20}
+.toast.e{background:var(--accent)}
+@media(max-width:620px){.two,.three{grid-template-columns:1fr}.hero{aspect-ratio:4/3}.nut{grid-template-columns:auto repeat(4,minmax(60px,1fr))}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header><div class="bar"><a class="logo" href="#/">Mon carnet de recettes</a>
+<nav><a href="#/" data-r="">Recettes</a><a href="#/ingredients" data-r="ingredients">Ingrédients</a><a class="add" href="#/nouvelle" data-r="nouvelle">Ajouter une recette</a></nav></div></header>
+<main id="app"></main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+/* ============ Outils ============ */
+const $ = s => document.querySelector(s), app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+const fmt = v => (Math.round((+v || 0) * 10) / 10).toLocaleString('fr-FR');
+const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? 0 : n; };
+function toast(msg, err) { const t = document.createElement('div'); t.className = 'toast' + (err ? ' e' : ''); t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 3000); }
+const ready = window.CONFIG && !CONFIG.SUPABASE_URL.includes('VOTRE');
+const db = ready ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : null;
+const ok = ({ data, error }) => { if (error) throw new Error(error.code === '23503' ? 'Cet ingrédient est utilisé dans une recette : retirez-le d’abord de ces recettes.' : error.code === '23505' ? 'Un ingrédient porte déjà ce nom.' : error.message); return data; };
+
+/* Nutrition : valeurs pour 100 g/ml × quantité / 100, additionnées */
+function totals(r) {
+  const t = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  (r.recipe_ingredients || []).forEach(ri => { const i = ri.ingredients, f = ri.quantity / 100; for (const k in t) t[k] += (i[k] || 0) * f; });
+  return t;
+}
+let ING = [];
+const loadIng = async () => { ING = ok(await db.from('ingredients').select('*').order('name')); };
+
+/* ============ Routeur ============ */
+async function route() {
+  const [p, a] = location.hash.slice(2).split('/');
+  document.querySelectorAll('nav a').forEach(l => l.classList.toggle('on', l.dataset.r === (p || '')));
+  if (!ready) { app.innerHTML = '<div class="err">Renseignez vos clés Supabase dans <b>config.js</b> (voir README).</div>'; return; }
+  app.innerHTML = '<p class="muted">Chargement…</p>';
+  try {
+    if (p === 'ingredients') await viewIng();
+    else if (p === 'nouvelle') await viewForm();
+    else if (p === 'modifier') await viewForm(a);
+    else if (p === 'recette') await viewRecipe(a);
+    else await viewLib();
+  } catch (e) { app.innerHTML = `<div class="err">Une erreur est survenue : ${esc(e.message)}</div>`; }
+  window.scrollTo(0, 0);
+}
+addEventListener('hashchange', route); route();
+
+/* ============ Bibliothèque + recherche par ingrédients ============ */
+let Q = '';
+async function viewLib() {
+  const recipes = ok(await db.from('recipes').select('*, recipe_ingredients(quantity, ingredients(*))').order('created_at', { ascending: false }));
+  app.innerHTML = `<section class="find"><h1>Qu’y a-t-il dans votre garde-manger ?</h1>
+    <div class="searchrow"><input id="q" value="${esc(Q)}" placeholder="Poulet, riz, crème fraîche, champignons" aria-label="Ingrédients disponibles"><button class="btn ghost" id="all">Tout afficher</button></div></section><div id="grid" class="grid"></div>`;
+  const draw = () => {
+    const terms = Q.split(',').map(norm).filter(Boolean);
+    const hit = (n, t) => n.includes(t) || (n.length > 2 && t.includes(n));
+    let list = recipes.map(r => {
+      const names = r.recipe_ingredients.map(ri => ({ raw: ri.ingredients.name, n: norm(ri.ingredients.name) }));
+      const missing = terms.length ? names.filter(x => !terms.some(t => hit(x.n, t))).map(x => x.raw) : [];
+      return { r, missing, score: names.length - missing.length, total: names.length };
+    });
+    if (terms.length) list = list.filter(x => x.score > 0).sort((a, b) => b.score - a.score || a.missing.length - b.missing.length);
+    $('#grid').innerHTML = list.length ? list.map(({ r, missing, score, total }) => {
+      const kc = fmt(totals(r).kcal / r.servings);
+      const info = terms.length ? (missing.length ? `<div class="miss">${score}/${total} ingrédients. Il manque : ${missing.map(esc).join(', ')}</div>` : '<div class="ok">Vous avez tout !</div>') : '';
+      return `<a class="card" href="#/recette/${r.id}"><div class="ph">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" loading="lazy">` : '🍽'}</div>
+      <div class="cb"><h3>${esc(r.title)}</h3><div class="meta"><span>Préparation ${r.prep_min} min</span><span>Cuisson ${r.cook_min} min</span>${total ? `<span>${kc} kcal/portion</span>` : ''}</div>${info}</div></a>`;
+    }).join('') : `<div class="empty" style="grid-column:1/-1">${recipes.length ? 'Aucune recette ne correspond à ces ingrédients.' : 'Votre carnet est vide. Ajoutez votre première recette !'}</div>`;
+  };
+  $('#q').oninput = e => { Q = e.target.value; draw(); };
+  $('#all').onclick = () => { Q = ''; $('#q').value = ''; draw(); };
+  draw();
+}
+
+/* ============ Fiche recette ============ */
+const nutBlock = (t, f) => ['kcal', 'protein', 'carbs', 'fat'].map(k => `<b>${fmt(t[k] / f)}</b>`).join('');
+async function viewRecipe(id) {
+  const r = ok(await db.from('recipes').select('*, recipe_ingredients(quantity, position, ingredients(*))').eq('id', id).single());
+  const ris = r.recipe_ingredients.sort((a, b) => a.position - b.position), t = totals(r);
+  app.innerHTML = `<div class="hero">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '🍽'}</div>
+  <h1 class="rtitle">${esc(r.title)}</h1>
+  <div class="chips"><span class="chip">Préparation ${r.prep_min} min</span><span class="chip">Cuisson ${r.cook_min} min</span><span class="chip">${r.servings} portion${r.servings > 1 ? 's' : ''}</span></div>
+  <div class="actions"><a class="btn" href="#/modifier/${r.id}">Modifier</a><button class="btn del" id="del">Supprimer</button></div>
+  <div class="panel"><h2>Valeurs nutritionnelles</h2><div class="nut"><span></span><small>kcal</small><small>Protéines (g)</small><small>Glucides (g)</small><small>Lipides (g)</small>
+    <small>Total</small>${nutBlock(t, 1)}<small>Par portion</small>${nutBlock(t, r.servings)}</div></div>
+  <div class="panel"><h2>Ingrédients</h2>${ris.length ? `<ul class="ing">${ris.map(x => `<li><span>${esc(x.ingredients.name)}</span><b>${fmt(x.quantity)} ${x.ingredients.unit}</b></li>`).join('')}</ul>` : '<p class="muted">Aucun ingrédient.</p>'}</div>
+  <div class="panel"><h2>Préparation</h2>${r.steps.length ? `<ol class="steps">${r.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : '<p class="muted">Aucune étape.</p>'}</div>
+  ${r.notes ? `<div class="panel"><h2>Notes</h2><p style="white-space:pre-wrap;margin:0">${esc(r.notes)}</p></div>` : ''}`;
+  $('#del').onclick = async () => {
+    if (!confirm(`Supprimer définitivement « ${r.title} » ?`)) return;
+    try {
+      if (r.cover_path) await db.storage.from('recipe-photos').remove([r.cover_path]);
+      ok(await db.from('recipes').delete().eq('id', id));
+      toast('Recette supprimée'); location.hash = '#/';
+    } catch (e) { toast(e.message, true); }
+  };
+}
+
+/* ============ Formulaire recette (création et modification) ============ */
+let F;
+async function viewForm(id) {
+  await loadIng();
+  if (id) {
+    const r = ok(await db.from('recipes').select('*, recipe_ingredients(quantity, position, ingredient_id)').eq('id', id).single());
+    F = { ...r, rows: r.recipe_ingredients.sort((a, b) => a.position - b.position).map(x => ({ ingredient_id: x.ingredient_id, quantity: x.quantity })), file: null };
+  } else F = { title: '', cover_url: null, cover_path: null, prep_min: '', cook_min: '', servings: 4, rows: [{ ingredient_id: '', quantity: '' }], steps: [''], notes: '', file: null };
+  if (!ING.length) toast('Créez d’abord des ingrédients dans l’onglet Ingrédients', true);
+  app.innerHTML = `<h1 style="margin-bottom:18px">${id ? 'Modifier la recette' : 'Nouvelle recette'}</h1><div class="panel form">
+    <label for="title">Titre *</label><input id="title" value="${esc(F.title)}">
+    <label>Photo de couverture</label><img id="prev" class="cover" ${F.cover_url ? `src="${esc(F.cover_url)}"` : 'hidden'} alt=""><input type="file" id="file" accept="image/*">
+    <div class="three"><div><label for="prep">Préparation (min)</label><input id="prep" inputmode="numeric" value="${esc(F.prep_min)}"></div>
+    <div><label for="cook">Cuisson (min)</label><input id="cook" inputmode="numeric" value="${esc(F.cook_min)}"></div>
+    <div><label for="serv">Portions *</label><input id="serv" inputmode="numeric" value="${esc(F.servings)}"></div></div>
+    <label>Ingrédients *</label><div id="rows"></div><button class="btn ghost" id="addRow" type="button">Ajouter un ingrédient</button>
+    <div id="live" class="nut" style="margin-top:18px"></div>
+    <label>Étapes de préparation</label><div id="steps"></div><button class="btn ghost" id="addStep" type="button">Ajouter une étape</button>
+    <label for="notes">Notes personnelles</label><textarea id="notes" rows="3">${esc(F.notes)}</textarea>
+    <div class="actions" style="margin:22px 0 0"><button class="btn pri" id="save">Enregistrer la recette</button><a class="btn ghost" href="#/${id ? 'recette/' + id : ''}">Annuler</a></div></div>`;
+  const bind = (sel, k) => $(sel).oninput = e => { F[k] = e.target.value; live(); };
+  bind('#title', 'title'); bind('#prep', 'prep_min'); bind('#cook', 'cook_min'); bind('#serv', 'servings'); bind('#notes', 'notes');
+  $('#file').onchange = e => { F.file = e.target.files[0] || null; if (F.file) { $('#prev').src = URL.createObjectURL(F.file); $('#prev').hidden = false; } };
+  $('#addRow').onclick = () => { F.rows.push({ ingredient_id: '', quantity: '' }); drawRows(); };
+  $('#addStep').onclick = () => { F.steps.push(''); drawSteps(); };
+  $('#save').onclick = saveRecipe;
+  drawRows(); drawSteps(); live();
+}
+function drawRows() {
+  const opts = sel => `<option value="">Choisir…</option>` + ING.map(i => `<option value="${i.id}" ${i.id === sel ? 'selected' : ''}>${esc(i.name)} (${i.unit})</option>`).join('');
+  $('#rows').innerHTML = F.rows.map((r, n) => `<div class="row"><select data-n="${n}" aria-label="Ingrédient">${opts(r.ingredient_id)}</select><input data-q="${n}" inputmode="decimal" placeholder="Quantité" value="${esc(r.quantity)}" aria-label="Quantité en g ou ml"><button class="x" data-rm="${n}" type="button" aria-label="Retirer">✕</button></div>`).join('');
+  $('#rows').oninput = e => { const d = e.target.dataset; if (d.n) F.rows[d.n].ingredient_id = e.target.value; if (d.q) F.rows[d.q].quantity = e.target.value; live(); };
+  $('#rows').onclick = e => { const n = e.target.dataset.rm; if (n !== undefined) { F.rows.splice(n, 1); drawRows(); live(); } };
+}
+function drawSteps() {
+  $('#steps').innerHTML = F.steps.map((s, n) => `<div class="row s"><textarea rows="2" data-s="${n}" placeholder="Étape ${n + 1}">${esc(s)}</textarea><button class="x" data-rm="${n}" type="button" aria-label="Retirer">✕</button></div>`).join('');
+  $('#steps').oninput = e => { if (e.target.dataset.s) F.steps[e.target.dataset.s] = e.target.value; };
+  $('#steps').onclick = e => { const n = e.target.dataset.rm; if (n !== undefined) { F.steps.splice(n, 1); drawSteps(); } };
+}
+function live() { // aperçu nutritionnel en temps réel
+  const r = { recipe_ingredients: F.rows.filter(x => x.ingredient_id && num(x.quantity) > 0).map(x => ({ quantity: num(x.quantity), ingredients: ING.find(i => i.id === x.ingredient_id) })) };
+  const s = Math.max(1, Math.round(num(F.servings)));
+  $('#live').innerHTML = `<span></span><small>kcal</small><small>Protéines (g)</small><small>Glucides (g)</small><small>Lipides (g)</small><small>Total</small>${nutBlock(totals(r), 1)}<small>Par portion</small>${nutBlock(totals(r), s)}`;
+}
+async function resize(file) { // réduit la photo à 1600 px max avant envoi
+  const img = await createImageBitmap(file), k = Math.min(1, 1600 / Math.max(img.width, img.height));
+  const c = document.createElement('canvas'); c.width = img.width * k; c.height = img.height * k;
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', .85));
+}
+async function saveRecipe() {
+  const rows = F.rows.filter(x => x.ingredient_id || x.quantity !== '');
+  if (!F.title.trim()) return toast('Le titre est obligatoire', true);
+  if (num(F.servings) < 1) return toast('Indiquez au moins 1 portion', true);
+  if (!rows.length) return toast('Ajoutez au moins un ingrédient', true);
+  if (rows.some(x => !x.ingredient_id || num(x.quantity) <= 0)) return toast('Chaque ingrédient doit avoir une quantité supérieure à 0', true);
+  const btn = $('#save'); btn.disabled = true; btn.textContent = 'Enregistrement…';
+  try {
+    let { cover_url, cover_path } = F, oldPath = null;
+    if (F.file) {
+      const path = crypto.randomUUID() + '.jpg';
+      const up = await db.storage.from('recipe-photos').upload(path, await resize(F.file), { contentType: 'image/jpeg' });
+      if (up.error) throw new Error('Envoi de la photo impossible : ' + up.error.message);
+      oldPath = F.cover_path; cover_path = path; cover_url = db.storage.from('recipe-photos').getPublicUrl(path).data.publicUrl;
+    }
+    const rec = { title: F.title.trim(), cover_url, cover_path, prep_min: Math.round(num(F.prep_min)), cook_min: Math.round(num(F.cook_min)), servings: Math.round(num(F.servings)), steps: F.steps.map(s => s.trim()).filter(Boolean), notes: F.notes?.trim() || null };
+    let id = F.id;
+    if (id) ok(await db.from('recipes').update(rec).eq('id', id)); else id = ok(await db.from('recipes').insert(rec).select('id').single()).id;
+    ok(await db.from('recipe_ingredients').delete().eq('recipe_id', id));
+    ok(await db.from('recipe_ingredients').insert(rows.map((x, n) => ({ recipe_id: id, ingredient_id: x.ingredient_id, quantity: num(x.quantity), position: n }))));
+    if (oldPath) await db.storage.from('recipe-photos').remove([oldPath]);
+    toast('Recette enregistrée'); location.hash = '#/recette/' + id;
+  } catch (e) { toast(e.message, true); btn.disabled = false; btn.textContent = 'Enregistrer la recette'; }
+}
+
+/* ============ Ingrédients ============ */
+async function viewIng() {
+  await loadIng();
+  let editing = null, filter = '';
+  app.innerHTML = `<h1 style="margin-bottom:6px">Mes ingrédients</h1><p class="muted" style="margin:0 0 18px">Valeurs nutritionnelles pour 100 g ou 100 ml.</p>
+  <div class="panel form"><h2 id="ft">Nouvel ingrédient</h2>
+    <div class="two"><div><label for="n">Nom *</label><input id="n"></div><div><label for="u">Unité de référence</label><select id="u"><option value="g">pour 100 g</option><option value="ml">pour 100 ml</option></select></div></div>
+    <div class="three" style="grid-template-columns:repeat(2,1fr)"><div><label for="k">Calories (kcal)</label><input id="k" inputmode="decimal"></div><div><label for="p">Protéines (g)</label><input id="p" inputmode="decimal"></div>
+    <div><label for="c">Glucides (g)</label><input id="c" inputmode="decimal"></div><div><label for="f">Lipides (g)</label><input id="f" inputmode="decimal"></div></div>
+    <div class="actions" style="margin:20px 0 0"><button class="btn pri" id="sv">Ajouter l’ingrédient</button><button class="btn ghost" id="cn" hidden>Annuler</button></div></div>
+  <input id="s" placeholder="Rechercher un ingrédient" style="margin-bottom:12px" aria-label="Rechercher"><div class="panel" id="list"></div>`;
+  const reset = () => { editing = null; ['n', 'k', 'p', 'c', 'f'].forEach(i => $('#' + i).value = ''); $('#u').value = 'g'; $('#ft').textContent = 'Nouvel ingrédient'; $('#sv').textContent = 'Ajouter l’ingrédient'; $('#cn').hidden = true; };
+  const draw = () => {
+    const l = ING.filter(i => norm(i.name).includes(norm(filter)));
+    $('#list').innerHTML = l.length ? l.map(i => `<div class="irow"><div><b>${esc(i.name)}</b><div class="muted" style="font-size:.9rem">pour 100 ${i.unit} : ${fmt(i.kcal)} kcal, ${fmt(i.protein)} g protéines, ${fmt(i.carbs)} g glucides, ${fmt(i.fat)} g lipides</div></div>
+      <div class="actions" style="margin:0"><button class="btn ghost" data-e="${i.id}">Modifier</button><button class="btn del" data-d="${i.id}">Supprimer</button></div></div>`).join('') : '<p class="muted" style="margin:0">Aucun ingrédient pour le moment.</p>';
+  };
+  $('#s').oninput = e => { filter = e.target.value; draw(); };
+  $('#cn').onclick = reset;
+  $('#sv').onclick = async () => {
+    const name = $('#n').value.trim(); if (!name) return toast('Le nom est obligatoire', true);
+    const v = { name, unit: $('#u').value, kcal: num($('#k').value), protein: num($('#p').value), carbs: num($('#c').value), fat: num($('#f').value) };
+    if (Object.values(v).some(x => typeof x === 'number' && x < 0)) return toast('Les valeurs ne peuvent pas être négatives', true);
+    try {
+      ok(editing ? await db.from('ingredients').update(v).eq('id', editing) : await db.from('ingredients').insert(v));
+      toast(editing ? 'Ingrédient modifié' : 'Ingrédient ajouté'); reset(); await loadIng(); draw();
+    } catch (e) { toast(e.message, true); }
+  };
+  $('#list').onclick = async e => {
+    const { e: eid, d: did } = e.target.dataset;
+    if (eid) { const i = ING.find(x => x.id === eid); editing = eid; $('#n').value = i.name; $('#u').value = i.unit; $('#k').value = i.kcal; $('#p').value = i.protein; $('#c').value = i.carbs; $('#f').value = i.fat; $('#ft').textContent = 'Modifier l’ingrédient'; $('#sv').textContent = 'Enregistrer'; $('#cn').hidden = false; window.scrollTo(0, 0); }
+    if (did) { const i = ING.find(x => x.id === did); if (!confirm(`Supprimer « ${i.name} » ?`)) return;
+      try { ok(await db.from('ingredients').delete().eq('id', did)); toast('Ingrédient supprimé'); await loadIng(); draw(); } catch (er) { toast(er.message, true); } }
+  };
+  draw();
+}
+</script>
+</body>
+</html>
