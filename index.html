@@ -52,14 +52,20 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .steps{padding-left:22px;margin:0}.steps li{padding:6px 0 6px 6px}.steps li::marker{color:var(--accent);font-weight:700}
 .form label{display:block;font-weight:700;font-size:.92rem;margin:14px 0 6px}
 .two,.three{display:grid;gap:14px}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}
-.row{display:grid;grid-template-columns:1fr 120px 44px;gap:10px;margin-bottom:10px;align-items:center}
+.row{display:grid;grid-template-columns:1fr 170px 44px;gap:10px;margin-bottom:10px;align-items:center}
+.qw{position:relative}.qw input{padding-right:78px}
+.qw .u{position:absolute;right:12px;top:50%;transform:translateY(-50%);max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mute);font-size:.85rem;pointer-events:none}
+.cats{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.pill{font:inherit;font-weight:500;border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:99px;padding:7px 16px;cursor:pointer;transition:background .15s}
+.pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pill:focus-visible{outline:3px solid var(--accent2);outline-offset:1px}
 .row.s{grid-template-columns:1fr 44px;align-items:start}
 .x{border:0;background:#F0E3E3;color:var(--accent);border-radius:12px;height:44px;cursor:pointer;font-size:1.1rem}
 .cover{width:100%;max-width:360px;aspect-ratio:4/3;object-fit:cover;border-radius:18px;display:block;margin-bottom:10px}
 .irow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;z-index:20}
 .toast.e{background:var(--accent)}
-@media(max-width:620px){.two,.three{grid-template-columns:1fr}.hero{aspect-ratio:4/3}.nut{grid-template-columns:auto repeat(4,minmax(60px,1fr))}}
+@media(max-width:620px){.two,.three{grid-template-columns:1fr}.row{grid-template-columns:1fr 44px}.row .x{grid-column:2;grid-row:1/3}.row.s .x{grid-row:auto}.cats{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.pill{white-space:nowrap;flex:none}.hero{aspect-ratio:4/3}.nut{grid-template-columns:auto repeat(4,minmax(60px,1fr))}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -84,13 +90,17 @@ const baseUrl = ready ? (() => { try { return new URL(CONFIG.SUPABASE_URL.trim()
 const db = ready ? supabase.createClient(baseUrl, CONFIG.SUPABASE_ANON_KEY.trim()) : null;
 const ok = ({ data, error }) => { if (error) throw new Error(error.code === '23503' ? 'Cet ingrédient est utilisé dans une recette : retirez-le d’abord de ces recettes.' : error.code === '23505' ? 'Un ingrédient porte déjà ce nom.' : error.message); return data; };
 
-/* Nutrition : valeurs pour 100 g/ml × quantité / 100, additionnées */
+/* Nutrition : g/ml → valeurs pour 100 × quantité / 100 ; « par quantité » → valeurs pour 1 unité × nombre d'unités ; puis additionnées */
 function totals(r) {
   const t = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-  (r.recipe_ingredients || []).forEach(ri => { const i = ri.ingredients, f = ri.quantity / 100; for (const k in t) t[k] += (i[k] || 0) * f; });
+  (r.recipe_ingredients || []).forEach(ri => { const i = ri.ingredients, f = i.unit === 'piece' ? ri.quantity : ri.quantity / 100; for (const k in t) t[k] += (i[k] || 0) * f; });
   return t;
 }
-let ING = [];
+let ING = [], CAT = '';
+const CATS = ['Apéro', 'Entrée', 'Plat', 'Dessert', 'Boissons'];
+const refText = i => i.unit === 'piece' ? `1 ${i.unit_label}` : `100 ${i.unit}`;          // base des valeurs nutritionnelles
+const sfx = i => !i ? '' : i.unit === 'piece' ? i.unit_label : i.unit;                   // unité affichée dans le champ quantité
+const qtyLabel = (i, q) => i.unit === 'piece' ? `${fmt(q)} × ${i.unit_label}` : `${fmt(q)} ${i.unit}`;
 const loadIng = async () => { ING = ok(await db.from('ingredients').select('*').order('name')); };
 
 /* ============ Routeur ============ */
@@ -110,30 +120,40 @@ async function route() {
 }
 addEventListener('hashchange', route); route();
 
-/* ============ Bibliothèque + recherche par ingrédients ============ */
+/* ============ Bibliothèque : catégories + recherche par nom et par ingrédients ============ */
 let Q = '';
 async function viewLib() {
   const recipes = ok(await db.from('recipes').select('*, recipe_ingredients(quantity, ingredients(*))').order('created_at', { ascending: false }));
+  const hasNone = recipes.some(r => !r.category);           // recettes d'avant la migration, pas encore classées
+  if (CAT === '__none' && !hasNone) CAT = '';
+  const pills = [['', 'Toutes les recettes'], ...CATS.map(c => [c, c]), ...(hasNone ? [['__none', 'À classer']] : [])];
   app.innerHTML = `<section class="find"><h1>Qu’y a-t-il dans votre garde-manger ?</h1>
-    <div class="searchrow"><input id="q" value="${esc(Q)}" placeholder="Poulet, riz, crème fraîche, champignons" aria-label="Ingrédients disponibles"><button class="btn ghost" id="all">Tout afficher</button></div></section><div id="grid" class="grid"></div>`;
+    <div class="searchrow"><input id="q" value="${esc(Q)}" placeholder="Nom de recette ou ingrédients : poulet, riz, crème fraîche" aria-label="Rechercher une recette ou des ingrédients"><button class="btn ghost" id="all">Tout afficher</button></div>
+    <div class="cats" id="cats" role="group" aria-label="Catégories">${pills.map(([v, l]) => `<button class="pill" data-c="${esc(v)}" aria-pressed="false">${esc(l)}</button>`).join('')}</div></section><div id="grid" class="grid"></div>`;
   const draw = () => {
+    document.querySelectorAll('.pill').forEach(b => { const on = b.dataset.c === CAT; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
     const terms = Q.split(',').map(norm).filter(Boolean);
     const hit = (n, t) => n.includes(t) || (n.length > 2 && t.includes(n));
-    let list = recipes.map(r => {
+    const inTitle = (title, t) => t.split(/\s+/).every(w => title.includes(w));   // tous les mots présents, même partiellement
+    let list = recipes.filter(r => CAT === '' || (CAT === '__none' ? !r.category : r.category === CAT)).map(r => {
       const names = r.recipe_ingredients.map(ri => ({ raw: ri.ingredients.name, n: norm(ri.ingredients.name) }));
       const missing = terms.length ? names.filter(x => !terms.some(t => hit(x.n, t))).map(x => x.raw) : [];
-      return { r, missing, score: names.length - missing.length, total: names.length };
+      const title = norm(r.title);
+      return { r, missing, score: names.length - missing.length, total: names.length,
+        tHit: terms.some(t => inTitle(title, t)), tFull: terms.length > 0 && inTitle(title, terms.join(' ')) };
     });
-    if (terms.length) list = list.filter(x => x.score > 0).sort((a, b) => b.score - a.score || a.missing.length - b.missing.length);
+    if (terms.length) list = list.filter(x => x.score > 0 || x.tHit)
+      .sort((a, b) => b.tFull - a.tFull || b.score - a.score || b.tHit - a.tHit || a.missing.length - b.missing.length);
     $('#grid').innerHTML = list.length ? list.map(({ r, missing, score, total }) => {
       const kc = fmt(totals(r).kcal / r.servings);
-      const info = terms.length ? (missing.length ? `<div class="miss">${score}/${total} ingrédients. Il manque : ${missing.map(esc).join(', ')}</div>` : '<div class="ok">Vous avez tout !</div>') : '';
+      const info = terms.length && score > 0 ? (missing.length ? `<div class="miss">${score}/${total} ingrédients. Il manque : ${missing.map(esc).join(', ')}</div>` : '<div class="ok">Vous avez tout !</div>') : '';
       return `<a class="card" href="#/recette/${r.id}"><div class="ph">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" loading="lazy">` : '🍽'}</div>
-      <div class="cb"><h3>${esc(r.title)}</h3><div class="meta"><span>Préparation ${r.prep_min} min</span><span>Cuisson ${r.cook_min} min</span>${total ? `<span>${kc} kcal/portion</span>` : ''}</div>${info}</div></a>`;
-    }).join('') : `<div class="empty" style="grid-column:1/-1">${recipes.length ? 'Aucune recette ne correspond à ces ingrédients.' : 'Votre carnet est vide. Ajoutez votre première recette !'}</div>`;
+      <div class="cb"><h3>${esc(r.title)}</h3><div class="meta">${r.category ? `<span>${esc(r.category)}</span>` : ''}<span>Préparation ${r.prep_min} min</span><span>Cuisson ${r.cook_min} min</span>${total ? `<span>${kc} kcal/portion</span>` : ''}</div>${info}</div></a>`;
+    }).join('') : `<div class="empty" style="grid-column:1/-1">${recipes.length ? 'Aucune recette ne correspond à votre recherche.' : 'Votre carnet est vide. Ajoutez votre première recette !'}</div>`;
   };
   $('#q').oninput = e => { Q = e.target.value; draw(); };
-  $('#all').onclick = () => { Q = ''; $('#q').value = ''; draw(); };
+  $('#cats').onclick = e => { const b = e.target.closest('.pill'); if (b) { CAT = b.dataset.c; draw(); } };
+  $('#all').onclick = () => { Q = ''; CAT = ''; $('#q').value = ''; draw(); };
   draw();
 }
 
@@ -144,11 +164,11 @@ async function viewRecipe(id) {
   const ris = r.recipe_ingredients.sort((a, b) => a.position - b.position), t = totals(r);
   app.innerHTML = `<div class="hero">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '🍽'}</div>
   <h1 class="rtitle">${esc(r.title)}</h1>
-  <div class="chips"><span class="chip">Préparation ${r.prep_min} min</span><span class="chip">Cuisson ${r.cook_min} min</span><span class="chip">${r.servings} portion${r.servings > 1 ? 's' : ''}</span></div>
+  <div class="chips">${r.category ? `<span class="chip">${esc(r.category)}</span>` : ''}<span class="chip">Préparation ${r.prep_min} min</span><span class="chip">Cuisson ${r.cook_min} min</span><span class="chip">${r.servings} portion${r.servings > 1 ? 's' : ''}</span></div>
   <div class="actions"><a class="btn" href="#/modifier/${r.id}">Modifier</a><button class="btn del" id="del">Supprimer</button></div>
   <div class="panel"><h2>Valeurs nutritionnelles</h2><div class="nut"><span></span><small>kcal</small><small>Protéines (g)</small><small>Glucides (g)</small><small>Lipides (g)</small>
     <small>Total</small>${nutBlock(t, 1)}<small>Par portion</small>${nutBlock(t, r.servings)}</div></div>
-  <div class="panel"><h2>Ingrédients</h2>${ris.length ? `<ul class="ing">${ris.map(x => `<li><span>${esc(x.ingredients.name)}</span><b>${fmt(x.quantity)} ${x.ingredients.unit}</b></li>`).join('')}</ul>` : '<p class="muted">Aucun ingrédient.</p>'}</div>
+  <div class="panel"><h2>Ingrédients</h2>${ris.length ? `<ul class="ing">${ris.map(x => `<li><span>${esc(x.ingredients.name)}</span><b>${qtyLabel(x.ingredients, x.quantity)}</b></li>`).join('')}</ul>` : '<p class="muted">Aucun ingrédient.</p>'}</div>
   <div class="panel"><h2>Préparation</h2>${r.steps.length ? `<ol class="steps">${r.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : '<p class="muted">Aucune étape.</p>'}</div>
   ${r.notes ? `<div class="panel"><h2>Notes</h2><p style="white-space:pre-wrap;margin:0">${esc(r.notes)}</p></div>` : ''}`;
   $('#del').onclick = async () => {
@@ -168,10 +188,11 @@ async function viewForm(id) {
   if (id) {
     const r = ok(await db.from('recipes').select('*, recipe_ingredients(quantity, position, ingredient_id)').eq('id', id).single());
     F = { ...r, rows: r.recipe_ingredients.sort((a, b) => a.position - b.position).map(x => ({ ingredient_id: x.ingredient_id, quantity: x.quantity })), file: null };
-  } else F = { title: '', cover_url: null, cover_path: null, prep_min: '', cook_min: '', servings: 4, rows: [{ ingredient_id: '', quantity: '' }], steps: [''], notes: '', file: null };
+  } else F = { title: '', category: CATS.includes(CAT) ? CAT : '', cover_url: null, cover_path: null, prep_min: '', cook_min: '', servings: 4, rows: [{ ingredient_id: '', quantity: '' }], steps: [''], notes: '', file: null };
   if (!ING.length) toast('Créez d’abord des ingrédients dans l’onglet Ingrédients', true);
   app.innerHTML = `<h1 style="margin-bottom:18px">${id ? 'Modifier la recette' : 'Nouvelle recette'}</h1><div class="panel form">
     <label for="title">Titre *</label><input id="title" value="${esc(F.title)}">
+    <label for="cat">Catégorie *</label><select id="cat"><option value="">Choisir…</option>${CATS.map(c => `<option ${c === F.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
     <label>Photo de couverture</label><img id="prev" class="cover" ${F.cover_url ? `src="${esc(F.cover_url)}"` : 'hidden'} alt=""><input type="file" id="file" accept="image/*">
     <div class="three"><div><label for="prep">Préparation (min)</label><input id="prep" inputmode="numeric" value="${esc(F.prep_min)}"></div>
     <div><label for="cook">Cuisson (min)</label><input id="cook" inputmode="numeric" value="${esc(F.cook_min)}"></div>
@@ -182,7 +203,7 @@ async function viewForm(id) {
     <label for="notes">Notes personnelles</label><textarea id="notes" rows="3">${esc(F.notes)}</textarea>
     <div class="actions" style="margin:22px 0 0"><button class="btn pri" id="save">Enregistrer la recette</button><a class="btn ghost" href="#/${id ? 'recette/' + id : ''}">Annuler</a></div></div>`;
   const bind = (sel, k) => $(sel).oninput = e => { F[k] = e.target.value; live(); };
-  bind('#title', 'title'); bind('#prep', 'prep_min'); bind('#cook', 'cook_min'); bind('#serv', 'servings'); bind('#notes', 'notes');
+  bind('#title', 'title'); bind('#cat', 'category'); bind('#prep', 'prep_min'); bind('#cook', 'cook_min'); bind('#serv', 'servings'); bind('#notes', 'notes');
   $('#file').onchange = e => { F.file = e.target.files[0] || null; if (F.file) { $('#prev').src = URL.createObjectURL(F.file); $('#prev').hidden = false; } };
   $('#addRow').onclick = () => { F.rows.push({ ingredient_id: '', quantity: '' }); drawRows(); };
   $('#addStep').onclick = () => { F.steps.push(''); drawSteps(); };
@@ -190,9 +211,12 @@ async function viewForm(id) {
   drawRows(); drawSteps(); live();
 }
 function drawRows() {
-  const opts = sel => `<option value="">Choisir…</option>` + ING.map(i => `<option value="${i.id}" ${i.id === sel ? 'selected' : ''}>${esc(i.name)} (${i.unit})</option>`).join('');
-  $('#rows').innerHTML = F.rows.map((r, n) => `<div class="row"><select data-n="${n}" aria-label="Ingrédient">${opts(r.ingredient_id)}</select><input data-q="${n}" inputmode="decimal" placeholder="Quantité" value="${esc(r.quantity)}" aria-label="Quantité en g ou ml"><button class="x" data-rm="${n}" type="button" aria-label="Retirer">✕</button></div>`).join('');
-  $('#rows').oninput = e => { const d = e.target.dataset; if (d.n) F.rows[d.n].ingredient_id = e.target.value; if (d.q) F.rows[d.q].quantity = e.target.value; live(); };
+  const opts = sel => `<option value="">Choisir…</option>` + ING.map(i => `<option value="${i.id}" ${i.id === sel ? 'selected' : ''}>${esc(i.name)} (${i.unit === 'piece' ? 'par ' + esc(i.unit_label) : i.unit})</option>`).join('');
+  $('#rows').innerHTML = F.rows.map((r, n) => { const i = ING.find(x => x.id === r.ingredient_id);
+    return `<div class="row"><select data-n="${n}" aria-label="Ingrédient">${opts(r.ingredient_id)}</select><div class="qw"><input data-q="${n}" inputmode="decimal" placeholder="Quantité" value="${esc(r.quantity)}" aria-label="Quantité"><span class="u">${esc(sfx(i))}</span></div><button class="x" data-rm="${n}" type="button" aria-label="Retirer">✕</button></div>`; }).join('');
+  $('#rows').oninput = e => { const d = e.target.dataset;
+    if (d.n) { F.rows[d.n].ingredient_id = e.target.value; e.target.closest('.row').querySelector('.u').textContent = sfx(ING.find(x => x.id === e.target.value)); }
+    if (d.q) F.rows[d.q].quantity = e.target.value; live(); };
   $('#rows').onclick = e => { const n = e.target.dataset.rm; if (n !== undefined) { F.rows.splice(n, 1); drawRows(); live(); } };
 }
 function drawSteps() {
@@ -214,6 +238,7 @@ async function resize(file) { // réduit la photo à 1600 px max avant envoi
 async function saveRecipe() {
   const rows = F.rows.filter(x => x.ingredient_id || x.quantity !== '');
   if (!F.title.trim()) return toast('Le titre est obligatoire', true);
+  if (!CATS.includes(F.category)) return toast('Choisissez une catégorie', true);
   if (num(F.servings) < 1) return toast('Indiquez au moins 1 portion', true);
   if (!rows.length) return toast('Ajoutez au moins un ingrédient', true);
   if (rows.some(x => !x.ingredient_id || num(x.quantity) <= 0)) return toast('Chaque ingrédient doit avoir une quantité supérieure à 0', true);
@@ -226,7 +251,7 @@ async function saveRecipe() {
       if (up.error) throw new Error('Envoi de la photo impossible : ' + up.error.message);
       oldPath = F.cover_path; cover_path = path; cover_url = db.storage.from('recipe-photos').getPublicUrl(path).data.publicUrl;
     }
-    const rec = { title: F.title.trim(), cover_url, cover_path, prep_min: Math.round(num(F.prep_min)), cook_min: Math.round(num(F.cook_min)), servings: Math.round(num(F.servings)), steps: F.steps.map(s => s.trim()).filter(Boolean), notes: F.notes?.trim() || null };
+    const rec = { title: F.title.trim(), category: F.category, cover_url, cover_path, prep_min: Math.round(num(F.prep_min)), cook_min: Math.round(num(F.cook_min)), servings: Math.round(num(F.servings)), steps: F.steps.map(s => s.trim()).filter(Boolean), notes: F.notes?.trim() || null };
     let id = F.id;
     if (id) ok(await db.from('recipes').update(rec).eq('id', id)); else id = ok(await db.from('recipes').insert(rec).select('id').single()).id;
     ok(await db.from('recipe_ingredients').delete().eq('recipe_id', id));
@@ -240,24 +265,28 @@ async function saveRecipe() {
 async function viewIng() {
   await loadIng();
   let editing = null, filter = '';
-  app.innerHTML = `<h1 style="margin-bottom:6px">Mes ingrédients</h1><p class="muted" style="margin:0 0 18px">Valeurs nutritionnelles pour 100 g ou 100 ml.</p>
+  app.innerHTML = `<h1 style="margin-bottom:6px">Mes ingrédients</h1><p class="muted" style="margin:0 0 18px">Valeurs nutritionnelles pour 100 g, pour 100 ml ou par unité (1 tomate, 1 œuf…).</p>
   <div class="panel form"><h2 id="ft">Nouvel ingrédient</h2>
-    <div class="two"><div><label for="n">Nom *</label><input id="n"></div><div><label for="u">Unité de référence</label><select id="u"><option value="g">pour 100 g</option><option value="ml">pour 100 ml</option></select></div></div>
+    <div class="two"><div><label for="n">Nom *</label><input id="n"></div><div><label for="u">Valeurs nutritionnelles</label><select id="u"><option value="g">Pour 100 g</option><option value="ml">Pour 100 ml</option><option value="piece">Par quantité</option></select></div></div>
+    <div id="ulw" hidden><label for="ul">Unité de référence *</label><input id="ul" placeholder="ex. concombre, tomate, œuf"><small class="muted">Les valeurs ci-dessous correspondent à 1 unité de référence.</small></div>
     <div class="three" style="grid-template-columns:repeat(2,1fr)"><div><label for="k">Calories (kcal)</label><input id="k" inputmode="decimal"></div><div><label for="p">Protéines (g)</label><input id="p" inputmode="decimal"></div>
     <div><label for="c">Glucides (g)</label><input id="c" inputmode="decimal"></div><div><label for="f">Lipides (g)</label><input id="f" inputmode="decimal"></div></div>
     <div class="actions" style="margin:20px 0 0"><button class="btn pri" id="sv">Ajouter l’ingrédient</button><button class="btn ghost" id="cn" hidden>Annuler</button></div></div>
   <input id="s" placeholder="Rechercher un ingrédient" style="margin-bottom:12px" aria-label="Rechercher"><div class="panel" id="list"></div>`;
-  const reset = () => { editing = null; ['n', 'k', 'p', 'c', 'f'].forEach(i => $('#' + i).value = ''); $('#u').value = 'g'; $('#ft').textContent = 'Nouvel ingrédient'; $('#sv').textContent = 'Ajouter l’ingrédient'; $('#cn').hidden = true; };
+  const reset = () => { editing = null; ['n', 'k', 'p', 'c', 'f', 'ul'].forEach(i => $('#' + i).value = ''); $('#u').value = 'g'; $('#ulw').hidden = true; $('#ft').textContent = 'Nouvel ingrédient'; $('#sv').textContent = 'Ajouter l’ingrédient'; $('#cn').hidden = true; };
   const draw = () => {
     const l = ING.filter(i => norm(i.name).includes(norm(filter)));
-    $('#list').innerHTML = l.length ? l.map(i => `<div class="irow"><div><b>${esc(i.name)}</b><div class="muted" style="font-size:.9rem">pour 100 ${i.unit} : ${fmt(i.kcal)} kcal, ${fmt(i.protein)} g protéines, ${fmt(i.carbs)} g glucides, ${fmt(i.fat)} g lipides</div></div>
+    $('#list').innerHTML = l.length ? l.map(i => `<div class="irow"><div><b>${esc(i.name)}</b><div class="muted" style="font-size:.9rem">pour ${refText(i)} : ${fmt(i.kcal)} kcal, ${fmt(i.protein)} g protéines, ${fmt(i.carbs)} g glucides, ${fmt(i.fat)} g lipides</div></div>
       <div class="actions" style="margin:0"><button class="btn ghost" data-e="${i.id}">Modifier</button><button class="btn del" data-d="${i.id}">Supprimer</button></div></div>`).join('') : '<p class="muted" style="margin:0">Aucun ingrédient pour le moment.</p>';
   };
   $('#s').oninput = e => { filter = e.target.value; draw(); };
+  $('#u').onchange = e => { $('#ulw').hidden = e.target.value !== 'piece'; };
   $('#cn').onclick = reset;
   $('#sv').onclick = async () => {
     const name = $('#n').value.trim(); if (!name) return toast('Le nom est obligatoire', true);
-    const v = { name, unit: $('#u').value, kcal: num($('#k').value), protein: num($('#p').value), carbs: num($('#c').value), fat: num($('#f').value) };
+    const unit = $('#u').value, unit_label = unit === 'piece' ? $('#ul').value.trim().replace(/^1\s+/, '') : null;
+    if (unit === 'piece' && !unit_label) return toast('Indiquez l’unité de référence (ex. concombre)', true);
+    const v = { name, unit, unit_label, kcal: num($('#k').value), protein: num($('#p').value), carbs: num($('#c').value), fat: num($('#f').value) };
     if (Object.values(v).some(x => typeof x === 'number' && x < 0)) return toast('Les valeurs ne peuvent pas être négatives', true);
     try {
       ok(editing ? await db.from('ingredients').update(v).eq('id', editing) : await db.from('ingredients').insert(v));
@@ -266,7 +295,7 @@ async function viewIng() {
   };
   $('#list').onclick = async e => {
     const { e: eid, d: did } = e.target.dataset;
-    if (eid) { const i = ING.find(x => x.id === eid); editing = eid; $('#n').value = i.name; $('#u').value = i.unit; $('#k').value = i.kcal; $('#p').value = i.protein; $('#c').value = i.carbs; $('#f').value = i.fat; $('#ft').textContent = 'Modifier l’ingrédient'; $('#sv').textContent = 'Enregistrer'; $('#cn').hidden = false; window.scrollTo(0, 0); }
+    if (eid) { const i = ING.find(x => x.id === eid); editing = eid; $('#n').value = i.name; $('#u').value = i.unit; $('#ul').value = i.unit_label || ''; $('#ulw').hidden = i.unit !== 'piece'; $('#k').value = i.kcal; $('#p').value = i.protein; $('#c').value = i.carbs; $('#f').value = i.fat; $('#ft').textContent = 'Modifier l’ingrédient'; $('#sv').textContent = 'Enregistrer'; $('#cn').hidden = false; window.scrollTo(0, 0); }
     if (did) { const i = ING.find(x => x.id === did); if (!confirm(`Supprimer « ${i.name} » ?`)) return;
       try { ok(await db.from('ingredients').delete().eq('id', did)); toast('Ingrédient supprimé'); await loadIng(); draw(); } catch (er) { toast(er.message, true); } }
   };

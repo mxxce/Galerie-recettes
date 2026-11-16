@@ -37,3 +37,10 @@ Sans connexion, quiconque connaît l’adresse du site et la clé `anon` peut mo
 - `ingredients` : nom, unité (100 g ou 100 ml), kcal, protéines, glucides, lipides.
 - `recipe_ingredients` : lie une recette à un ingrédient avec une quantité. Les valeurs nutritionnelles sont calculées à chaque affichage à partir de la bibliothèque, donc toujours à jour.
 - Supprimer une recette supprime ses lignes d’ingrédients et sa photo. Un ingrédient utilisé dans une recette ne peut pas être supprimé (message explicatif).
+
+## Mise à jour V2 (catégories, recherche par nom, ingrédients « par quantité »)
+
+1. **Avant tout**, exécutez `supabase_migration_v2.sql` dans Supabase > SQL Editor > Run. Vos recettes et ingrédients existants sont conservés.
+2. Remplacez `index.html` dans votre dépôt GitHub (gardez votre `config.js`).
+3. Les anciennes recettes apparaissent dans un filtre « À classer » : ouvrez-les, cliquez sur **Modifier**, choisissez une catégorie et enregistrez. (Le filtre disparaît quand tout est classé.)
+4. Nouvelle installation : exécutez `supabase.sql` puis `supabase_migration_v2.sql`.
