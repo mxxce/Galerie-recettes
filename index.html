@@ -130,6 +130,17 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .cal-mob-daypanel{display:none}
 .cal-list-group{margin-bottom:18px}
 .cal-list-group h3{font-size:1.1rem;margin-bottom:8px;text-transform:capitalize}
+.cal-act-btn{width:36px;height:36px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font-size:.95rem;font-weight:700;display:grid;place-items:center;cursor:pointer}
+.cal-act-btn:hover{border-color:var(--ink)}
+.cal-act-btn.del{border-color:#F3C6CB;background:#FBE8EB;color:var(--accent)}
+.pm-types{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px}
+.pm-type-btn{font:inherit;font-size:.9rem;font-weight:600;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;text-align:center}
+.pm-type-btn.on{border-color:var(--accent);background:#FBE8EB;color:var(--accent)}
+.pm-rec-list{display:flex;flex-direction:column;gap:6px;max-height:210px;overflow-y:auto;margin-top:8px;padding-right:2px}
+.pm-rec-item{width:100%;text-align:left;font:inherit;background:#fff;border:1.5px solid var(--line);border-radius:13px;padding:8px 10px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.pm-rec-item.on{border-color:var(--accent);background:#FFF8F8}
+.pm-rec-item img,.pm-rec-ph{width:40px;height:40px;border-radius:10px;object-fit:cover;flex:none;background:linear-gradient(135deg,#E6EBD6,#F3E2B7);display:grid;place-items:center;font-size:1.1rem}
+.pm-quick-dates{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 /* Communauté : Auth, Profil, Utilisateurs, Dashboard */
 .authbox{max-width:440px;margin:20px auto;background:#fff;border-radius:var(--r);padding:28px 26px;box-shadow:0 8px 30px -18px rgba(36,48,32,.35)}
 .authbox h1{font-size:1.85rem;margin-bottom:8px}
@@ -1930,6 +1941,22 @@ function sortMeals(list) {
   );
 }
 
+let MY_CAL_RECIPES = null;
+
+async function ensureMyCalRecipes() {
+  if (Array.isArray(MY_CAL_RECIPES)) return MY_CAL_RECIPES;
+  const rows = ok(await withTimeout(
+    db.from('recipes')
+      .select('id, title, category, dish_type, cover_url, prep_min, cook_min, servings')
+      .eq('owner_id', ME.id)
+      .order('title', { ascending: true }),
+    15000,
+    'Le chargement de vos recettes'
+  ));
+  MY_CAL_RECIPES = rows || [];
+  return MY_CAL_RECIPES;
+}
+
 function personalMealCardHtml(m) {
   const titleHtml = m.recipe_id
     ? `<a class="cal-card-title" href="#/recette/${m.recipe_id}">${esc(m.recipe_title)}</a>`
@@ -1943,7 +1970,11 @@ function personalMealCardHtml(m) {
       ${titleHtml}
       ${m.note ? `<div class="cal-card-note">${esc(m.note)}</div>` : ''}
     </div>
-    <div class="cal-card-acts" data-meal-actions="${m.id}"></div>
+    <div class="cal-card-acts">
+      <button class="cal-act-btn" data-move-meal="${m.id}" type="button" title="Déplacer vers un autre jour" aria-label="Déplacer">⇄</button>
+      <button class="cal-act-btn" data-edit-meal="${m.id}" type="button" title="Modifier ce repas" aria-label="Modifier">✎</button>
+      <button class="cal-act-btn del" data-del-meal="${m.id}" type="button" title="Supprimer ce repas" aria-label="Supprimer">✕</button>
+    </div>
   </div>`;
 }
 
@@ -2145,13 +2176,31 @@ async function viewCalendar() {
   app.onclick = e => {
     const addBtn = e.target.closest('[data-add-day]');
     if (addBtn) {
-      openPersonalMealModal(addBtn.dataset.addDay);
+      openPersonalMealModal(addBtn.dataset.addDay, null);
       return;
     }
     const mealPill = e.target.closest('[data-open-meal]');
     if (mealPill) {
       const mObj = CAL_MEALS.find(x => x.id === mealPill.dataset.openMeal);
-      if (mObj?.recipe_id) location.hash = `#/recette/${mObj.recipe_id}`;
+      if (mObj) openPersonalMealModal(mObj.meal_date, mObj);
+      return;
+    }
+    const moveBtn = e.target.closest('[data-move-meal]');
+    if (moveBtn) {
+      const mObj = CAL_MEALS.find(x => x.id === moveBtn.dataset.moveMeal);
+      if (mObj) openMovePersonalMealModal(mObj);
+      return;
+    }
+    const editBtn = e.target.closest('[data-edit-meal]');
+    if (editBtn) {
+      const mObj = CAL_MEALS.find(x => x.id === editBtn.dataset.editMeal);
+      if (mObj) openPersonalMealModal(mObj.meal_date, mObj);
+      return;
+    }
+    const delBtn = e.target.closest('[data-del-meal]');
+    if (delBtn) {
+      const mObj = CAL_MEALS.find(x => x.id === delBtn.dataset.delMeal);
+      if (mObj) confirmDeletePersonalMeal(mObj);
       return;
     }
     const dayCell = e.target.closest('[data-day]');
@@ -2162,8 +2211,228 @@ async function viewCalendar() {
   };
 }
 
-function openPersonalMealModal(dateIso) {
-  toast(`Planification pour le ${dateIso} : formulaire complet à l'étape 4.`);
+function confirmDeletePersonalMeal(meal, onDeleted) {
+  confirmDialog({
+    title: 'Supprimer ce repas ?',
+    name: `${MEAL_TYPE_LABEL[meal.meal_type] || meal.meal_type} — ${meal.recipe_title}`,
+    text: `Ce repas prévu le ${parseIso(meal.meal_date).toLocaleDateString('fr-FR')} sera retiré de votre calendrier personnel.`,
+    confirmLabel: 'Supprimer',
+    onConfirm: async () => {
+      await safeMutate(async () => {
+        ok(await db.from('personal_meals').delete().eq('id', meal.id).eq('user_id', ME.id));
+      }, 'La suppression du repas');
+      toast('Repas supprimé');
+      if (onDeleted) onDeleted();
+      await viewCalendar();
+    }
+  });
+}
+
+function openMovePersonalMealModal(meal) {
+  const baseDate = parseIso(meal.meal_date);
+  const plus1 = calIso(addDays(baseDate, 1));
+  const plus2 = calIso(addDays(baseDate, 2));
+  const plus7 = calIso(addDays(baseDate, 7));
+
+  openModal(`
+    <h2>Déplacer le repas</h2>
+    <div class="nm">${esc(meal.recipe_title)}</div>
+    <form class="form" id="mvForm">
+      <label for="mvDate">Nouvelle date *</label>
+      <input type="date" id="mvDate" value="${esc(meal.meal_date)}" required>
+      <div class="pm-quick-dates">
+        <button class="btn ghost sm" type="button" data-qdate="${plus1}">Lendemain</button>
+        <button class="btn ghost sm" type="button" data-qdate="${plus2}">+2 jours</button>
+        <button class="btn ghost sm" type="button" data-qdate="${plus7}">Semaine suivante (+7 j)</button>
+      </div>
+      <div class="mb">
+        <button class="btn ghost" id="mvCancel" type="button">Annuler</button>
+        <button class="btn pri" id="mvSave" type="submit">Déplacer</button>
+      </div>
+    </form>`, (el, close) => {
+    const dateInp = el.querySelector('#mvDate');
+    el.querySelector('#mvCancel').onclick = close;
+    el.querySelectorAll('[data-qdate]').forEach(b => {
+      b.onclick = () => { dateInp.value = b.dataset.qdate; };
+    });
+    el.querySelector('#mvForm').onsubmit = async e => {
+      e.preventDefault();
+      const nextDate = dateInp.value;
+      if (!nextDate) return toast('Choisissez une date valide', true);
+      await runAction(el.querySelector('#mvSave'), 'Déplacement…', async () => {
+        await safeMutate(async () => {
+          ok(await db.from('personal_meals')
+            .update({ meal_date: nextDate, updated_at: new Date().toISOString() })
+            .eq('id', meal.id)
+            .eq('user_id', ME.id));
+        }, 'Le déplacement du repas');
+        CAL_SELECTED = nextDate;
+        CAL_CURSOR = parseIso(nextDate);
+        toast('Repas déplacé');
+        close();
+        await viewCalendar();
+      });
+    };
+  });
+}
+
+async function openPersonalMealModal(dateIso, existingMeal = null) {
+  let recipes = [];
+  try {
+    recipes = await ensureMyCalRecipes();
+  } catch (e) {
+    toast(humanizeError(e), true);
+    return;
+  }
+
+  let selType = existingMeal?.meal_type || 'dejeuner';
+  let selRecipeId = existingMeal?.recipe_id || '';
+  let customTitle = !existingMeal?.recipe_id && existingMeal?.recipe_title ? existingMeal.recipe_title : '';
+  let searchQ = '';
+
+  openModal(`
+    <h2>${existingMeal ? 'Modifier le repas' : 'Planifier un repas'}</h2>
+    ${existingMeal?.recipe_id ? `
+      <div class="prov" style="margin:10px 0 6px">
+        <span>Recette associée : <b>${esc(existingMeal.recipe_title)}</b></span>
+        <a class="btn sm pri" id="pmViewRec" href="#/recette/${existingMeal.recipe_id}">Voir la recette →</a>
+      </div>` : ''}
+    <form class="form" id="pmForm">
+      <label for="pmDate">Date *</label>
+      <input type="date" id="pmDate" value="${esc(dateIso || calIso(new Date()))}" required>
+
+      <label>Moment du repas *</label>
+      <div class="pm-types" id="pmTypes">
+        ${MEAL_TYPES.map(([k, l]) => `<button type="button" class="pm-type-btn ${selType === k ? 'on' : ''}" data-pmt="${k}">${esc(l)}</button>`).join('')}
+      </div>
+
+      <label for="pmSearch">Choisir une recette de ma bibliothèque *</label>
+      <input id="pmSearch" type="search" placeholder="Rechercher par nom ou catégorie…" autocomplete="off">
+      <div id="pmRecBox"></div>
+
+      <label for="pmCustom" style="font-weight:500;color:var(--mute)">Ou saisir un intitulé libre (si hors bibliothèque)</label>
+      <input id="pmCustom" value="${esc(customTitle)}" placeholder="Ex. Restes de la veille, Pique-nique…">
+
+      <label for="pmNote">Note (facultatif)</label>
+      <input id="pmNote" value="${esc(existingMeal?.note || '')}" placeholder="Ex. Préparer la veille, 2 portions…">
+
+      <div class="mb" style="justify-content:space-between;flex-wrap:wrap">
+        ${existingMeal
+          ? `<button class="btn del" id="pmDel" type="button">Supprimer</button>`
+          : `<span></span>`}
+        <div style="display:flex;gap:10px;margin-left:auto">
+          <button class="btn ghost" id="pmCancel" type="button">Annuler</button>
+          <button class="btn pri" id="pmSave" type="submit">${existingMeal ? 'Enregistrer' : 'Ajouter'}</button>
+        </div>
+      </div>
+    </form>`, (el, close) => {
+    const viewRecLink = el.querySelector('#pmViewRec');
+    if (viewRecLink) viewRecLink.onclick = () => close();
+
+    el.querySelector('#pmCancel').onclick = close;
+    const delBtn = el.querySelector('#pmDel');
+    if (delBtn && existingMeal) {
+      delBtn.onclick = () => confirmDeletePersonalMeal(existingMeal, close);
+    }
+
+    const typesBox = el.querySelector('#pmTypes');
+    typesBox.onclick = e => {
+      const b = e.target.closest('[data-pmt]');
+      if (!b) return;
+      selType = b.dataset.pmt;
+      typesBox.querySelectorAll('.pm-type-btn').forEach(x => x.classList.toggle('on', x.dataset.pmt === selType));
+    };
+
+    const customInp = el.querySelector('#pmCustom');
+    customInp.oninput = e => {
+      customTitle = e.target.value;
+      if (customTitle.trim()) {
+        selRecipeId = '';
+        renderRecList();
+      }
+    };
+
+    const recBox = el.querySelector('#pmRecBox');
+    const renderRecList = () => {
+      if (!recipes.length) {
+        recBox.innerHTML = `<p class="muted" style="font-size:.86rem;margin:6px 0">Aucune recette dans votre bibliothèque. <a href="#/nouvelle" id="pmNewRec" style="color:var(--accent);font-weight:700">Créer une recette</a> ou saisissez un intitulé libre ci-dessous.</p>`;
+        const lnk = recBox.querySelector('#pmNewRec');
+        if (lnk) lnk.onclick = () => close();
+        return;
+      }
+      const q = norm(searchQ);
+      const filtered = recipes.filter(r => !q || norm(r.title).includes(q) || norm(r.category || '').includes(q));
+      if (!filtered.length) {
+        recBox.innerHTML = `<p class="muted" style="font-size:.86rem;margin:6px 0">Aucune recette trouvée pour « ${esc(searchQ)} ».</p>`;
+        return;
+      }
+      recBox.innerHTML = `<div class="pm-rec-list">
+        ${filtered.slice(0, 40).map(r => {
+          const totalMin = (r.prep_min || 0) + (r.cook_min || 0);
+          return `<button type="button" class="pm-rec-item ${r.id === selRecipeId ? 'on' : ''}" data-pickrec="${r.id}">
+            ${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : `<div class="pm-rec-ph">🍽</div>`}
+            <div style="min-width:0;flex:1">
+              <div style="font-weight:700;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title)}</div>
+              <div class="muted" style="font-size:.78rem">${r.category ? esc(r.category) + ' • ' : ''}${totalMin} min</div>
+            </div>
+          </button>`;
+        }).join('')}
+      </div>`;
+    };
+
+    recBox.onclick = e => {
+      const btn = e.target.closest('[data-pickrec]');
+      if (!btn) return;
+      selRecipeId = btn.dataset.pickrec;
+      customTitle = '';
+      customInp.value = '';
+      renderRecList();
+    };
+
+    el.querySelector('#pmSearch').oninput = e => {
+      searchQ = e.target.value;
+      renderRecList();
+    };
+    renderRecList();
+
+    el.querySelector('#pmForm').onsubmit = async e => {
+      e.preventDefault();
+      const mealDate = el.querySelector('#pmDate').value;
+      const note = el.querySelector('#pmNote').value.trim();
+      const chosenRec = selRecipeId ? recipes.find(r => r.id === selRecipeId) : null;
+      const finalTitle = chosenRec ? chosenRec.title : customTitle.trim();
+
+      if (!mealDate) return toast('Veuillez choisir une date', true);
+      if (!finalTitle) return toast('Sélectionnez une recette ou saisissez un intitulé', true);
+
+      const payload = {
+        user_id: ME.id,
+        meal_date: mealDate,
+        meal_type: selType,
+        recipe_id: chosenRec ? chosenRec.id : null,
+        recipe_title: finalTitle,
+        recipe_cover_url: chosenRec ? (chosenRec.cover_url || null) : null,
+        note: note || null,
+        updated_at: new Date().toISOString()
+      };
+
+      await runAction(el.querySelector('#pmSave'), 'Enregistrement…', async () => {
+        await safeMutate(async () => {
+          if (existingMeal) {
+            ok(await db.from('personal_meals').update(payload).eq('id', existingMeal.id).eq('user_id', ME.id));
+          } else {
+            ok(await db.from('personal_meals').insert(payload));
+          }
+        }, 'L’enregistrement du repas');
+
+        CAL_SELECTED = mealDate;
+        CAL_CURSOR = parseIso(mealDate);
+        toast(existingMeal ? 'Repas mis à jour' : 'Repas ajouté au calendrier');
+        close();
+        await viewCalendar();
+      });
+    };
+  });
 }
 
 boot();
