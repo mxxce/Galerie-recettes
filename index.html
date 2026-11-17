@@ -138,7 +138,18 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .sc-role{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(36,48,32,.09);color:inherit}
 .sc-chip.on .sc-role{background:rgba(255,255,255,.2)}
 .sc-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.m-assign{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:#EEF2E4;color:var(--ink);margin-left:4px}
+.m-assign{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:
+.inv-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--accent);color:#fff;font-size:.74rem;font-weight:700;margin-left:6px}
+.tab.on .inv-badge{background:#fff;color:var(--ink)}
+.inv-box{background:#FAF4E6;border:1.5px solid #E9D6A6;border-radius:18px;padding:14px 16px;margin-bottom:16px}
+.inv-box h3{font-size:1.05rem;margin-bottom:10px}
+.inv-list{display:flex;flex-direction:column;gap:8px}
+.inv-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mem-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.mem-row:last-child{border-bottom:0}
+.mem-user{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.mem-pick{width:100%;text-align:left;font:inherit;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
+.mem-pick:hover{border-color:var(--ink)}#EEF2E4;color:var(--ink);margin-left:4px}
 .cal-mob-daypanel{display:none}
 .cal-list-group{margin-bottom:18px}
 .cal-list-group h3{font-size:1.1rem;margin-bottom:8px;text-transform:capitalize}
@@ -1944,6 +1955,7 @@ const startOfWeek = d => { const day = (d.getDay() + 6) % 7; return addDays(d, -
 
 let CAL_SPACE = 'personal'; // 'personal' | 'shared'
 let SHARED_CALS = [];
+let PENDING_INVITES = [];
 let CAL_SHARED_ID = '';
 let CAL_VIEW = 'month'; // 'month' | 'week' | 'list'
 let CAL_CURSOR = new Date();
@@ -2012,6 +2024,37 @@ async function loadSharedCalendars() {
   }
 }
 
+async function loadPendingInvitations() {
+  const rows = ok(await withTimeout(
+    db.from('shared_calendar_invitations')
+      .select('id, calendar_id, invited_by, role, created_at, shared_calendars(id, name)')
+      .eq('invited_user_id', ME.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false }),
+    12000,
+    'Le chargement des invitations'
+  ));
+
+  const valid = (rows || []).filter(r => r.shared_calendars);
+  const inviterIds = [...new Set(valid.map(r => r.invited_by).filter(Boolean))];
+  let profilesMap = {};
+  if (inviterIds.length) {
+    const pRows = ok(await withTimeout(
+      db.from('profiles').select('id, pseudo, avatar_url').in('id', inviterIds),
+      10000
+    ));
+    (pRows || []).forEach(p => { profilesMap[p.id] = p; });
+  }
+
+  PENDING_INVITES = valid.map(r => ({
+    id: r.id,
+    calendar_id: r.calendar_id,
+    calendar_name: r.shared_calendars.name,
+    role: r.role,
+    inviter: profilesMap[r.invited_by] || { id: r.invited_by, pseudo: 'Membre' }
+  }));
+}
+
 function mealCardHtml(m, { isShared = false, canEdit = true } = {}) {
   const titleHtml = m.recipe_id
     ? `<a class="cal-card-title" href="#/recette/${m.recipe_id}">${esc(m.recipe_title)}</a>`
@@ -2071,6 +2114,8 @@ async function loadMealsRange(startIso, endIso) {
 async function viewCalendar() {
   if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
 
+  await loadPendingInvitations();
+
   let activeShared = null;
   if (CAL_SPACE === 'shared') {
     await loadSharedCalendars();
@@ -2118,7 +2163,29 @@ async function viewCalendar() {
   });
   Object.keys(byDate).forEach(k => { byDate[k] = sortMeals(byDate[k]); });
 
+  const invitesBannerHtml = (isShared && PENDING_INVITES.length) ? `
+    <div class="inv-box" id="calInvBox">
+      <h3>Invitation${PENDING_INVITES.length > 1 ? 's' : ''} reçue${PENDING_INVITES.length > 1 ? 's' : ''} (${PENDING_INVITES.length})</h3>
+      <div class="inv-list">
+        ${PENDING_INVITES.map(inv => `
+          <div class="inv-item">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              ${avatarHtml(inv.inviter, 'sm')}
+              <div style="min-width:0">
+                <div><b>${esc(inv.calendar_name)}</b> <span class="sc-role">${esc(CAL_ROLE_LABEL[inv.role] || inv.role)}</span></div>
+                <div class="muted" style="font-size:.84rem">Invité par @${esc(inv.inviter.pseudo)}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn pri sm" data-accept-inv="${inv.id}" data-inv-cal="${inv.calendar_id}" type="button">Accepter</button>
+              <button class="btn ghost sm" data-decline-inv="${inv.id}" type="button">Refuser</button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
   const sharedSwitcherHtml = isShared ? `
+    ${invitesBannerHtml}
     <div class="sc-bar">
       <div class="sc-list" id="scSelector">
         ${SHARED_CALS.map(c => `
@@ -2129,9 +2196,11 @@ async function viewCalendar() {
         <button class="btn ghost sm" id="newSharedCalBtn" type="button">+ Nouveau calendrier</button>
       </div>
       ${activeShared ? `<div class="sc-meta">
-        <span class="muted" style="font-size:.86rem">${activeShared.memberCount} membre${activeShared.memberCount > 1 ? 's' : ''}</span>
+        <button class="btn ghost sm" id="manageMembersBtn" type="button">Membres (${activeShared.memberCount})</button>
         ${(activeShared.role === 'owner' || activeShared.role === 'admin')
           ? `<button class="btn ghost sm" id="renameSharedCalBtn" type="button">Renommer</button>` : ''}
+        ${activeShared.role !== 'owner'
+          ? `<button class="btn del sm" id="leaveSharedCalBtn" type="button">Quitter</button>` : ''}
         ${activeShared.role === 'owner'
           ? `<button class="btn del sm" id="deleteSharedCalBtn" type="button">Supprimer</button>` : ''}
       </div>` : ''}
@@ -2227,9 +2296,8 @@ async function viewCalendar() {
       </div>
       <div class="cal-spaces" id="calSpaceSwitch">
         <button class="tab ${!isShared ? 'on' : ''}" data-space="personal" type="button">Mon calendrier</button>
-        <button class="tab ${isShared ? 'on' : ''}" data-space="shared" type="button">Calendriers partagés</button>
+        <button class="tab ${isShared ? 'on' : ''}" data-space="shared" type="button">Calendriers partagés${PENDING_INVITES.length ? `<span class="inv-badge">${PENDING_INVITES.length}</span>` : ''}</button>
       </div>
-    </div>
 
     ${sharedSwitcherHtml}
 
@@ -2266,6 +2334,44 @@ async function viewCalendar() {
 
   if ($('#newSharedCalBtn')) $('#newSharedCalBtn').onclick = () => openCreateSharedCalendarModal();
   if ($('#emptyCreateSharedBtn')) $('#emptyCreateSharedBtn').onclick = () => openCreateSharedCalendarModal();
+
+  if ($('#calInvBox')) {
+    $('#calInvBox').onclick = async e => {
+      const accBtn = e.target.closest('[data-accept-inv]');
+      if (accBtn) {
+        const invId = accBtn.dataset.acceptInv;
+        const calId = accBtn.dataset.invCal;
+        await runAction(accBtn, '…', async () => {
+          await safeMutate(async () => ok(
+            await db.rpc('respond_calendar_invitation', { p_invitation_id: invId, p_accept: true })
+          ), 'L’acceptation de l’invitation');
+          CAL_SHARED_ID = calId;
+          toast('Invitation acceptée');
+          await viewCalendar();
+        });
+        return;
+      }
+      const decBtn = e.target.closest('[data-decline-inv]');
+      if (decBtn) {
+        const invId = decBtn.dataset.declineInv;
+        await runAction(decBtn, '…', async () => {
+          await safeMutate(async () => ok(
+            await db.rpc('respond_calendar_invitation', { p_invitation_id: invId, p_accept: false })
+          ), 'Le refus de l’invitation');
+          toast('Invitation refusée');
+          await viewCalendar();
+        });
+      }
+    };
+  }
+
+  if ($('#manageMembersBtn') && activeShared) {
+    $('#manageMembersBtn').onclick = () => openCalendarMembersModal(activeShared);
+  }
+
+  if ($('#leaveSharedCalBtn') && activeShared) {
+    $('#leaveSharedCalBtn').onclick = () => confirmLeaveSharedCalendar(activeShared);
+  }
 
   if ($('#scSelector')) {
     $('#scSelector').onclick = e => {
@@ -2442,6 +2548,231 @@ function openRenameSharedCalendarModal(cal) {
         await viewCalendar();
       });
     };
+  });
+}
+
+function confirmLeaveSharedCalendar(cal, onDone) {
+  confirmDialog({
+    title: 'Quitter ce calendrier partagé ?',
+    name: cal.name,
+    text: 'Vous n’aurez plus accès aux repas de ce calendrier partagé, sauf si vous êtes invité à nouveau.',
+    confirmLabel: 'Quitter le calendrier',
+    onConfirm: async () => {
+      await safeMutate(async () => ok(
+        await db.from('shared_calendar_members')
+          .delete()
+          .eq('calendar_id', cal.id)
+          .eq('user_id', ME.id)
+      ), 'La sortie du calendrier');
+      CAL_SHARED_ID = '';
+      toast('Vous avez quitté le calendrier');
+      if (onDone) onDone();
+      await viewCalendar();
+    }
+  });
+}
+
+async function openCalendarMembersModal(cal) {
+  const canManage = cal.role === 'owner' || cal.role === 'admin';
+
+  openModal(`
+    <h2>Membres — ${esc(cal.name)}</h2>
+    <div id="cmBody"><p class="muted">Chargement des membres…</p></div>
+    <div class="mb">
+      ${cal.role !== 'owner' ? `<button class="btn del" id="cmLeave" type="button" style="margin-right:auto">Quitter</button>` : ''}
+      <button class="btn ghost" id="cmClose" type="button">Fermer</button>
+    </div>`, async (el, close) => {
+    el.querySelector('#cmClose').onclick = close;
+    const leaveBtn = el.querySelector('#cmLeave');
+    if (leaveBtn) leaveBtn.onclick = () => confirmLeaveSharedCalendar(cal, close);
+
+    const body = el.querySelector('#cmBody');
+
+    const refreshModal = async () => {
+      try {
+        const mRows = ok(await withTimeout(
+          db.from('shared_calendar_members')
+            .select('user_id, role, can_edit_meals, joined_at')
+            .eq('calendar_id', cal.id)
+            .order('joined_at', { ascending: true }),
+          12000
+        ));
+
+        let sentInvites = [];
+        if (canManage) {
+          sentInvites = ok(await withTimeout(
+            db.from('shared_calendar_invitations')
+              .select('id, invited_user_id, role, created_at')
+              .eq('calendar_id', cal.id)
+              .eq('status', 'pending')
+              .order('created_at', { ascending: false }),
+            12000
+          )) || [];
+        }
+
+        const allUserIds = [...new Set([
+          ...(mRows || []).map(x => x.user_id),
+          ...sentInvites.map(x => x.invited_user_id)
+        ])];
+
+        let profilesMap = {};
+        if (allUserIds.length) {
+          const pRows = ok(await withTimeout(
+            db.from('profiles').select('id, pseudo, avatar_url').in('id', allUserIds),
+            10000
+          ));
+          (pRows || []).forEach(p => { profilesMap[p.id] = p; });
+        }
+
+        const memberIds = new Set((mRows || []).map(x => x.user_id));
+        const pendingIds = new Set(sentInvites.map(x => x.invited_user_id));
+
+        const membersHtml = (mRows || []).map(m => {
+          const prof = profilesMap[m.user_id] || { id: m.user_id, pseudo: 'Utilisateur' };
+          const isSelf = m.user_id === ME.id;
+          const canKick = !isSelf && (
+            cal.role === 'owner' || (cal.role === 'admin' && m.role === 'member')
+          );
+          return `<div class="mem-row">
+            <div class="mem-user">
+              ${avatarHtml(prof, 'sm')}
+              <div style="min-width:0">
+                <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@${esc(prof.pseudo)}${isSelf ? ' (vous)' : ''}</div>
+                <span class="sc-role">${esc(CAL_ROLE_LABEL[m.role] || m.role)}</span>
+              </div>
+            </div>
+            ${canKick ? `<button class="btn del sm" data-kick-uid="${m.user_id}" data-kick-name="@${esc(prof.pseudo)}" type="button">Retirer</button>` : ''}
+          </div>`;
+        }).join('');
+
+        const pendingHtml = (canManage && sentInvites.length) ? `
+          <div style="margin-top:16px">
+            <b style="font-size:.9rem;display:block;margin-bottom:6px">Invitations en attente (${sentInvites.length})</b>
+            ${sentInvites.map(inv => {
+              const prof = profilesMap[inv.invited_user_id] || { id: inv.invited_user_id, pseudo: 'Utilisateur' };
+              return `<div class="mem-row">
+                <div class="mem-user">
+                  ${avatarHtml(prof, 'xs')}
+                  <span style="font-weight:600">@${esc(prof.pseudo)}</span>
+                  <span class="sc-role">${esc(CAL_ROLE_LABEL[inv.role] || inv.role)}</span>
+                </div>
+                <button class="btn ghost sm" data-cancel-inv="${inv.id}" type="button">Annuler</button>
+              </div>`;
+            }).join('')}
+          </div>` : '';
+
+        const inviteFormHtml = canManage ? `
+          <div style="margin-top:16px;padding-top:14px;border-top:1.5px solid var(--line)">
+            <b style="font-size:.95rem;display:block;margin-bottom:8px">Inviter un membre par pseudo</b>
+            <div style="display:grid;grid-template-columns:1fr ${cal.role === 'owner' ? '145px' : ''};gap:8px">
+              <input id="cmSearchUser" type="search" placeholder="Rechercher un @pseudo…" autocomplete="off">
+              ${cal.role === 'owner' ? `<select id="cmInviteRole" aria-label="Rôle attribué">
+                <option value="member">Membre</option>
+                <option value="admin">Administrateur</option>
+              </select>` : ''}
+            </div>
+            <div id="cmSearchResults" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
+          </div>` : '';
+
+        body.innerHTML = `
+          <div>${membersHtml}</div>
+          ${pendingHtml}
+          ${inviteFormHtml}`;
+
+        /* Retirer un membre */
+        body.querySelectorAll('[data-kick-uid]').forEach(btn => {
+          btn.onclick = () => runAction(btn, '…', async () => {
+            await safeMutate(async () => ok(
+              await db.from('shared_calendar_members')
+                .delete()
+                .eq('calendar_id', cal.id)
+                .eq('user_id', btn.dataset.kickUid)
+            ), 'Le retrait du membre');
+            toast(`${btn.dataset.kickName} a été retiré du calendrier`);
+            await refreshModal();
+            await viewCalendar();
+          });
+        });
+
+        /* Annuler une invitation en attente */
+        body.querySelectorAll('[data-cancel-inv]').forEach(btn => {
+          btn.onclick = () => runAction(btn, '…', async () => {
+            await safeMutate(async () => ok(
+              await db.from('shared_calendar_invitations')
+                .delete()
+                .eq('id', btn.dataset.cancelInv)
+            ), 'L’annulation de l’invitation');
+            toast('Invitation annulée');
+            await refreshModal();
+          });
+        });
+
+        /* Recherche et envoi d'invitation par pseudo */
+        if (canManage) {
+          const searchInp = body.querySelector('#cmSearchUser');
+          const resBox = body.querySelector('#cmSearchResults');
+          const runUserSearch = debounce(async () => {
+            const term = norm(searchInp.value);
+            if (term.length < 2) {
+              resBox.innerHTML = '';
+              return;
+            }
+            try {
+              const users = ok(await withTimeout(
+                db.from('profiles')
+                  .select('id, pseudo, avatar_url')
+                  .ilike('pseudo_norm', `%${term}%`)
+                  .limit(8),
+                10000
+              )) || [];
+
+              const candidates = users.filter(u => !memberIds.has(u.id) && !pendingIds.has(u.id));
+              if (!candidates.length) {
+                resBox.innerHTML = `<p class="muted" style="font-size:.84rem;margin:2px 0">Aucun utilisateur disponible trouvé.</p>`;
+                return;
+              }
+              resBox.innerHTML = candidates.map(u => `
+                <button type="button" class="mem-pick" data-send-inv="${u.id}">
+                  <span style="display:flex;align-items:center;gap:8px">
+                    ${avatarHtml(u, 'xs')}
+                    <b>@${esc(u.pseudo)}</b>
+                  </span>
+                  <span class="btn pri sm" style="padding:5px 12px;font-size:.8rem">Inviter</span>
+                </button>`).join('');
+            } catch (ex) {
+              resBox.innerHTML = `<div class="err" style="padding:8px 12px;font-size:.85rem">${esc(humanizeError(ex))}</div>`;
+            }
+          }, 250);
+
+          searchInp.oninput = runUserSearch;
+
+          resBox.onclick = async e => {
+            const pick = e.target.closest('[data-send-inv]');
+            if (!pick) return;
+            const targetUid = pick.dataset.sendInv;
+            const roleSel = body.querySelector('#cmInviteRole');
+            const inviteRole = (cal.role === 'owner' && roleSel) ? roleSel.value : 'member';
+
+            await runAction(pick, 'Envoi…', async () => {
+              await safeMutate(async () => ok(
+                await db.from('shared_calendar_invitations').insert({
+                  calendar_id: cal.id,
+                  invited_by: ME.id,
+                  invited_user_id: targetUid,
+                  role: inviteRole
+                })
+              ), 'L’envoi de l’invitation');
+              toast('Invitation envoyée');
+              await refreshModal();
+            });
+          };
+        }
+      } catch (ex) {
+        body.innerHTML = `<div class="err">${esc(humanizeError(ex))}</div>`;
+      }
+    };
+
+    await refreshModal();
   });
 }
 
