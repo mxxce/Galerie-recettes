@@ -82,86 +82,54 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .irow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;z-index:200;width:max-content;max-width:90vw;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,.25)}
 .toast.e{background:var(--accent)}
-
-/* ============ Gestion des ingrédients : PC vs Mobile ============ */
-.ing-desktop{display:block}
-.ing-mobile{display:none}
-
-/* Composant mobile dédié (≤ 620px) */
-.mob-ing-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 0 10px}
-.mob-ing-head label{margin:0;font-size:1rem}
-.mob-ing-badge{background:var(--bg);border:1px solid var(--line);color:var(--ink);font-size:.82rem;font-weight:700;padding:4px 11px;border-radius:99px}
-.mob-ing-badge.has{background:#E8F3EA;border-color:#BFD9C3;color:#235730}
-
-.mob-composer{background:#FAFBF6;border:1.5px solid var(--line);border-radius:20px;padding:14px;margin-bottom:16px;box-shadow:0 6px 18px -14px rgba(36,48,32,.35)}
-.mob-comp-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
-.mob-comp-step{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:#FBE8EB;padding:3px 10px;border-radius:99px}
-
-.mob-search-wrap{position:relative}
-.mob-search-wrap input{padding:12px 42px 12px 14px;border-radius:14px;background:#fff;font-size:1rem}
-.mob-search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;border-radius:99px;background:var(--bg);color:var(--mute);font-size:.95rem;cursor:pointer;display:grid;place-items:center}
-
-.mob-cat-strip{display:flex;gap:6px;overflow-x:auto;padding:10px 0 4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.mob-cat-strip::-webkit-scrollbar{display:none}
-.mob-cat-chip{font:inherit;font-size:.82rem;font-weight:500;padding:6px 12px;border-radius:99px;border:1.5px solid var(--line);background:#fff;color:var(--ink);white-space:nowrap;flex:none;cursor:pointer}
-.mob-cat-chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-
-.mob-res-meta{font-size:.8rem;color:var(--mute);margin:8px 0 6px;display:flex;justify-content:space-between;align-items:center}
-.mob-res-list{display:flex;flex-direction:column;gap:6px;max-height:228px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:2px}
-.mob-res-item{width:100%;text-align:left;font:inherit;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;min-height:48px}
-.mob-res-item:active{background:#F1F5E8;border-color:var(--ink)}
-.mob-res-main{min-width:0;flex:1}
-.mob-res-name{font-weight:700;font-size:.95rem;color:var(--ink);display:block;overflow-wrap:anywhere}
-.mob-res-sub{font-size:.78rem;color:var(--mute);display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}
-.mob-res-unit{flex:none;background:var(--bg);border:1px solid var(--line);color:var(--ink);font-size:.78rem;font-weight:700;padding:4px 10px;border-radius:99px;white-space:nowrap}
-.mob-res-added{background:#E8F3EA;color:#235730;font-size:.72rem;font-weight:700;padding:1px 7px;border-radius:99px}
-.mob-res-empty{background:#fff;border:1.5px dashed var(--line);border-radius:14px;padding:14px;text-align:center;font-size:.88rem;color:var(--mute)}
-
-.mob-sel-card{background:#FAF4E6;border:1.5px solid #E9D6A6;border-radius:16px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-.mob-sel-info{min-width:0;flex:1}
-.mob-sel-label{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#8B6514;display:block}
-.mob-sel-name{font-weight:700;font-size:1.05rem;color:var(--ink);display:block;overflow-wrap:anywhere;margin-top:2px}
-.mob-sel-ref{font-size:.82rem;color:var(--mute);display:block;margin-top:2px}
-
-.mob-qty-grid{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:10px}
-.mob-qty-field label,.mob-unit-field label{margin:0 0 5px;font-size:.84rem;color:var(--ink)}
-.mob-qty-field input{font-size:1.05rem;font-weight:700;min-height:48px;background:#fff}
-.mob-unit-pill{min-height:48px;padding:0 16px;border-radius:14px;background:#EEF2E4;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.95rem;color:var(--ink);white-space:nowrap}
-.mob-unit-variants{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
-.mob-unit-variants span{font-size:.8rem;color:var(--mute)}
-.mob-var-btn{font:inherit;font-size:.82rem;font-weight:700;padding:6px 12px;border-radius:99px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;min-height:36px}
-.mob-var-btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-
-.mob-presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
-.mob-presets span{font-size:.78rem;color:var(--mute);margin-right:2px}
-.mob-preset-btn{font:inherit;font-size:.84rem;font-weight:700;padding:6px 12px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;min-height:36px}
-.mob-preset-btn:active{background:var(--ink);color:#fff}
-
-.mob-add-cta{width:100%;min-height:50px;font-size:1rem;border-radius:15px;box-shadow:0 8px 18px -10px rgba(168,40,58,.65)}
-
-.mob-added-head{display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px}
-.mob-added-head b{font-size:.94rem;color:var(--ink)}
-.mob-added-empty{background:var(--bg);border:1.5px dashed var(--line);border-radius:16px;padding:16px 14px;text-align:center;font-size:.9rem;color:var(--mute)}
-.mob-added-list{display:flex;flex-direction:column;gap:8px}
-
-.mob-ing-card{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 2px 8px -6px rgba(36,48,32,.25)}
-.mob-ing-card.editing{flex-direction:column;align-items:stretch;border-color:var(--accent2);background:#FFFDF7}
-.mob-card-info{min-width:0;flex:1}
-.mob-card-name{font-weight:700;font-size:.98rem;color:var(--ink);display:block;overflow-wrap:anywhere}
-.mob-card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
-.mob-card-qty{background:#FBE8EB;color:var(--accent);font-weight:700;font-size:.86rem;padding:2px 10px;border-radius:99px}
-.mob-card-kcal{font-size:.8rem;color:var(--mute)}
-.mob-card-actions{display:flex;gap:6px;flex:none}
-.mob-icon-btn{width:42px;height:42px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font-size:1rem;font-weight:700;display:grid;place-items:center;cursor:pointer}
-.mob-icon-btn.del{border-color:#F3C6CB;background:#FBE8EB;color:var(--accent)}
-
-.mob-edit-row{display:flex;align-items:center;gap:8px;margin-top:8px}
-.mob-step-btn{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font-size:1.25rem;font-weight:700;cursor:pointer;flex:none}
-.mob-edit-input{flex:1;min-width:0;text-align:center;font-weight:700;font-size:1.05rem;min-height:44px;padding:8px}
-.mob-edit-unit{font-weight:700;font-size:.9rem;color:var(--mute);white-space:nowrap}
-.mob-edit-btns{display:flex;gap:8px;margin-top:10px}
-.mob-edit-btns .btn{flex:1;min-height:42px;padding:8px 12px}
-
+/* ============ Calendrier des repas ============ */
+.cal-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.cal-spaces{display:flex;gap:8px;flex-wrap:wrap}
+.cal-bar{background:#fff;border-radius:var(--r);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 1px 0 var(--line),0 8px 24px -18px rgba(36,48,32,.3)}
+.cal-nav{display:flex;align-items:center;gap:8px}
+.cal-nav h2{font-size:1.3rem;min-width:190px;text-align:center;text-transform:capitalize}
+.cal-nav .btn{padding:8px 13px;min-width:40px}
+.cal-views{display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:99px}
+.cal-views button{font:inherit;font-size:.88rem;font-weight:600;border:0;background:transparent;color:var(--mute);padding:6px 14px;border-radius:99px;cursor:pointer}
+.cal-views button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(36,48,32,.12)}
+.cal-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.cal-grid-wrap{background:#fff;border-radius:var(--r);padding:14px;box-shadow:0 1px 0 var(--line),0 8px 24px -18px rgba(36,48,32,.3)}
+.cal-dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:6px;text-align:center;font-size:.82rem;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.03em}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal-cell{min-height:126px;border:1.5px solid var(--line);border-radius:16px;padding:8px;display:flex;flex-direction:column;gap:5px;background:#fff;min-width:0;transition:border-color .15s,background .15s}
+.cal-cell.out{background:#FAFBF7;opacity:.58}
+.cal-cell.today{border-color:var(--accent);background:#FFFDFB}
+.cal-cell.sel{border-color:var(--ink);box-shadow:0 0 0 2px rgba(36,48,32,.12)}
+.cal-cell-head{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.cal-daynum{font-weight:700;font-size:.9rem;width:26px;height:26px;border-radius:99px;display:grid;place-items:center}
+.cal-cell.today .cal-daynum{background:var(--accent);color:#fff}
+.cal-cell-add{border:0;background:var(--bg);color:var(--ink);width:26px;height:26px;border-radius:99px;font-weight:700;cursor:pointer;display:grid;place-items:center;font-size:1rem;line-height:1}
+.cal-cell-add:hover{background:var(--ink);color:#fff}
+.cal-dots{display:none}
+.cal-mini-list{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cal-pill-meal{display:flex;align-items:center;gap:6px;padding:4px 7px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-size:.78rem;line-height:1.25;min-width:0;cursor:pointer;text-align:left}
+.cal-pill-meal:hover{border-color:var(--ink)}
+.cal-pill-meal img{width:22px;height:22px;border-radius:6px;object-fit:cover;flex:none}
+.cal-pill-txt{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.mtype{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.mtype.petit-dejeuner{background:#FDF0D5;color:#8A5A00}
+.mtype.dejeuner{background:#E3F1E6;color:#235D32}
+.mtype.diner{background:#FBE4E7;color:#8E1E2E}
+.mtype.autre{background:#ECEFE4;color:#4B5644}
+.cal-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+.cal-wday{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.cal-wday.today{border-color:var(--accent)}
+.cal-wday-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.cal-card{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:11px 12px;display:flex;align-items:center;gap:11px;min-width:0}
+.cal-card-thumb{width:52px;height:52px;border-radius:12px;object-fit:cover;flex:none;background:linear-gradient(135deg,#E6EBD6,#F3E2B7);display:grid;place-items:center;font-size:1.3rem}
+.cal-card-body{min-width:0;flex:1}
+.cal-card-title{font-weight:700;font-size:.96rem;display:block;overflow-wrap:anywhere;margin-top:3px}
+.cal-card-title:hover{color:var(--accent)}
+.cal-card-note{font-size:.82rem;color:var(--mute);margin-top:3px;overflow-wrap:anywhere}
+.cal-card-acts{display:flex;gap:6px;flex:none}
+.cal-mob-daypanel{display:none}
+.cal-list-group{margin-bottom:18px}
+.cal-list-group h3{font-size:1.1rem;margin-bottom:8px;text-transform:capitalize}
 /* Communauté : Auth, Profil, Utilisateurs, Dashboard */
 .authbox{max-width:440px;margin:20px auto;background:#fff;border-radius:var(--r);padding:28px 26px;box-shadow:0 8px 30px -18px rgba(36,48,32,.35)}
 .authbox h1{font-size:1.85rem;margin-bottom:8px}
@@ -186,8 +154,6 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .urow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .more{display:flex;justify-content:center;margin-top:24px}
 @media(max-width:620px){
-  .ing-desktop{display:none}
-  .ing-mobile{display:block}
   .two,.three{grid-template-columns:1fr}.row{grid-template-columns:1fr 44px}.row .x{grid-column:2;grid-row:1/3}
   .cats,.tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.pill,.tab{white-space:nowrap;flex:none}
   .bar{padding:8px 14px;gap:6px}.logo{font-size:1.05rem;width:100%}nav a,nav button.navbtn{padding:6px 11px;font-size:.88rem}
@@ -203,9 +169,22 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
   .hero{aspect-ratio:4 / 3;max-height:320px;border-radius:20px}.nut{grid-template-columns:auto repeat(4,minmax(60px,1fr))}
   .ucard{flex-wrap:wrap}.uactions{width:100%}.uactions .btn{flex:1}
   .phead{padding:18px;gap:14px}.av{width:68px;height:68px;font-size:1.6rem}
+  .cal-bar{padding:12px;gap:10px}.cal-nav{width:100%;justify-content:space-between}.cal-nav h2{min-width:0;font-size:1.12rem}
+  .cal-views{width:100%}.cal-views button{flex:1;padding:7px 8px;font-size:.84rem}
+  .cal-grid-wrap{padding:10px 8px}.cal-dow{gap:3px;font-size:.74rem}.cal-grid{gap:4px}
+  .cal-cell{min-height:52px;padding:5px 2px;border-radius:12px;align-items:center;justify-content:space-between;cursor:pointer}
+  .cal-cell-head{justify-content:center;width:100%}.cal-cell-add,.cal-mini-list{display:none}
+  .cal-dots{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;min-height:8px}
+  .cal-dot{width:6px;height:6px;border-radius:99px;background:var(--accent)}
+  .cal-dot.petit-dejeuner{background:#D48A00}.cal-dot.dejeuner{background:#2F6F3E}.cal-dot.diner{background:var(--accent)}.cal-dot.autre{background:#6A7563}
+  .cal-mob-daypanel{display:block;margin-top:14px}
+  .cal-week{grid-template-columns:1fr}
 }
 @media(max-width:340px){.grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}.mo,.md{animation:none!important}}
+.phead{padding:18px;gap:14px}.av{width:68px;height:68px;font-size:1.6rem}
+}
+@media(max-width:340px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -264,7 +243,7 @@ function humanizeError(err) {
   if (code === '23503') return 'Cet ingrédient est utilisé dans une recette : retirez-le d’abord.';
   if (code === '23505') return 'Cet élément existe déjà dans la base de données.';
   if (code === '42501' || status === 403) return 'Action non autorisée sur cette ressource.';
-  if (status === 429) return 'Trop de requêtes envoyées. Patientez quelques secondes avant de réessayez.';
+  if (status === 429) return 'Trop de requêtes envoyées. Patientez quelques secondes avant de réessayer.';
   if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
     return 'Impossible de joindre le serveur (coupure réseau temporaire). Réessayez dans un instant.';
   }
@@ -498,6 +477,7 @@ function renderNav() {
     $('#nav').innerHTML = `
       <a href="#/" class="${cur === '' ? 'on' : ''}">Accueil</a>
       <a href="#/mes-recettes" class="${cur === 'mes-recettes' ? 'on' : ''}">Mes recettes</a>
+      <a href="#/calendrier" class="${cur === 'calendrier' ? 'on' : ''}">Calendrier</a>
       <a href="#/recherche" class="${cur === 'recherche' ? 'on' : ''}">Recherche</a>
       <a href="#/ingredients" class="${cur === 'ingredients' ? 'on' : ''}">Ingrédients</a>
       <a href="#/profil" class="${cur === 'profil' && !location.hash.split('/')[2] ? 'on' : ''}">Mon profil</a>
@@ -584,6 +564,7 @@ async function route() {
     else if (p === 'profil') await viewProfile(a || ME?.id);
     else if (p === 'mes-recettes') await viewMyRecipes();
     else if (p === 'ingredients') await viewIng();
+    else if (p === 'calendrier') await viewCalendar();
     else if (p === 'nouvelle') await viewForm();
     else if (p === 'modifier') await viewForm(a);
     else if (p === 'recette') await viewRecipe(a);
@@ -1558,14 +1539,11 @@ function clearDraft(recipeId) {
 
 /* ============ Formulaire recette (Création & Modification) ============ */
 let F, ING_Q = '', ING_CAT = '', FORM_EDIT_ID = null;
-let MOB_Q = '', MOB_CAT = '', MOB_SEL_ID = '', MOB_QTY = '', MOB_EDIT_IDX = null;
-
 async function viewForm(id) {
   if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
   FORM_EDIT_ID = id || null;
   await loadIng();
   ING_Q = ''; ING_CAT = '';
-  MOB_Q = ''; MOB_CAT = ''; MOB_SEL_ID = ''; MOB_QTY = ''; MOB_EDIT_IDX = null;
 
   if (id) {
     const { data: r, error } = await withTimeout(db.from('recipes')
@@ -1642,23 +1620,15 @@ async function viewForm(id) {
       <div><label for="cook">Cuisson (min)</label><input id="cook" inputmode="numeric" value="${esc(F.cook_min)}"></div>
       <div><label for="serv">Portions *</label><input id="serv" inputmode="numeric" value="${esc(F.servings)}"></div>
     </div>
-
-    <!-- Version Ordinateur (inchangée) -->
-    <div class="ing-desktop">
-      <label>Ingrédients *</label>
-      <div class="two" style="margin-bottom:10px">
-        <input id="ingFilterQ" placeholder="Rechercher un ingrédient (ex. carotte, poulet, crème…)" aria-label="Rechercher un ingrédient">
-        <select id="ingFilterCat" aria-label="Filtrer par catégorie d'ingrédient">
-          <option value="">Toutes les catégories (${ING.length})</option>
-          ${ingCats.map(c => `<option value="${esc(c)}">${esc(c)} (${ING.filter(i => i.category === c).length})</option>`).join('')}
-        </select>
-      </div>
-      <div id="rows"></div><button class="btn ghost" id="addRow" type="button">Ajouter un ingrédient</button>
+    <label>Ingrédients *</label>
+    <div class="two" style="margin-bottom:10px">
+      <input id="ingFilterQ" placeholder="Rechercher un ingrédient (ex. carotte, poulet, crème…)" aria-label="Rechercher un ingrédient">
+      <select id="ingFilterCat" aria-label="Filtrer par catégorie d'ingrédient">
+        <option value="">Toutes les catégories (${ING.length})</option>
+        ${ingCats.map(c => `<option value="${esc(c)}">${esc(c)} (${ING.filter(i => i.category === c).length})</option>`).join('')}
+      </select>
     </div>
-
-    <!-- Version Mobile (refonte ergonomique) -->
-    <div class="ing-mobile" id="ingMobileArea"></div>
-
+    <div id="rows"></div><button class="btn ghost" id="addRow" type="button">Ajouter un ingrédient</button>
     <div id="live" class="nut" style="margin-top:18px"></div>
     <label for="steps">Préparation</label><textarea id="steps" rows="6"></textarea>
     <label for="notes">Notes personnelles <small class="muted" style="font-weight:400">(strictement privées, jamais partagées)</small></label><textarea id="notes" rows="3"></textarea>
@@ -1684,7 +1654,6 @@ async function viewForm(id) {
       $('#steps').value = F.steps || '';
       $('#notes').value = F.notes || '';
       if (!Array.isArray(F.rows) || !F.rows.length) F.rows = [{ ingredient_id: '', quantity: '' }];
-      MOB_SEL_ID = ''; MOB_QTY = ''; MOB_EDIT_IDX = null;
       drawRows(); live();
       $('#draftBanner').remove();
       toast('Brouillon restauré');
@@ -1741,380 +1710,8 @@ function drawRows() {
     if (d.q) F.rows[d.q].quantity = e.target.value;
     live();
     saveDraft(FORM_EDIT_ID);
-    drawMobileIng();
   };
-  $('#rows').onclick = e => {
-    const n = e.target.dataset.rm;
-    if (n !== undefined) {
-      F.rows.splice(n, 1);
-      if (MOB_EDIT_IDX !== null && MOB_EDIT_IDX >= F.rows.length) MOB_EDIT_IDX = null;
-      drawRows(); live(); saveDraft(FORM_EDIT_ID);
-    }
-  };
-
-  drawMobileIng();
-}
-
-/* ============ Interface Mobile dédiée à la gestion des ingrédients ============ */
-function drawMobileIng() {
-  const host = $('#ingMobileArea');
-  if (!host || !F) return;
-
-  const addedEntries = F.rows
-    .map((r, idx) => ({ r, idx, ing: ING.find(x => x.id === r.ingredient_id) }))
-    .filter(x => x.ing);
-
-  const addedIds = new Set(addedEntries.map(x => x.ing.id));
-  const ingCats = [...new Set(ING.map(i => i.category).filter(Boolean))];
-  const selIng = MOB_SEL_ID ? ING.find(x => x.id === MOB_SEL_ID) : null;
-
-  if (MOB_SEL_ID && !selIng) {
-    MOB_SEL_ID = '';
-    MOB_QTY = '';
-  }
-
-  let composerHtml = '';
-  if (!ING.length) {
-    composerHtml = `<div class="mob-composer">
-      <div class="mob-res-empty">
-        Aucun ingrédient enregistré dans la base.<br>
-        <a href="#/ingredients" style="color:var(--accent);font-weight:700;display:inline-block;margin-top:6px">Créer des ingrédients →</a>
-      </div>
-    </div>`;
-  } else if (!selIng) {
-    composerHtml = `<div class="mob-composer">
-      <div class="mob-comp-title">
-        <span class="mob-comp-step">1. Choisir un ingrédient</span>
-        <span class="muted" style="font-size:.8rem">${ING.length} disponibles</span>
-      </div>
-      <div class="mob-search-wrap">
-        <input id="mobIngSearch" type="search" value="${esc(MOB_Q)}" placeholder="Rechercher (ex. aubergine, farine, œuf…)" autocomplete="off" aria-label="Rechercher un ingrédient">
-        <button class="mob-search-clear" id="mobClearSearch" type="button" aria-label="Effacer la recherche" ${MOB_Q ? '' : 'hidden'}>✕</button>
-      </div>
-      ${ingCats.length ? `<div class="mob-cat-strip" id="mobCatPills">
-        <button class="mob-cat-chip ${MOB_CAT === '' ? 'on' : ''}" data-mcat="" type="button">Toutes</button>
-        ${ingCats.map(c => `<button class="mob-cat-chip ${MOB_CAT === c ? 'on' : ''}" data-mcat="${esc(c)}" type="button">${esc(c)}</button>`).join('')}
-      </div>` : ''}
-      <div id="mobIngResultsBox"></div>
-    </div>`;
-  } else {
-    const variants = ING.filter(x => norm(x.name) === norm(selIng.name));
-    const unitDisplay = selIng.unit === 'piece' ? 'unité(s)' : selIng.unit;
-    const presets = selIng.unit === 'piece' ? [0.5, 1, 2, 3, 4] : [50, 100, 150, 200, 250, 500];
-    const qVal = num(MOB_QTY);
-    const estKcal = qVal > 0 ? fmt((selIng.kcal || 0) * (selIng.unit === 'piece' ? qVal : qVal / 100)) : null;
-
-    composerHtml = `<div class="mob-composer">
-      <div class="mob-comp-title">
-        <span class="mob-comp-step">2. Quantité & ajout</span>
-        <button class="btn ghost sm" id="mobChangeIng" type="button" style="padding:5px 11px;font-size:.82rem">Changer</button>
-      </div>
-      <div class="mob-sel-card">
-        <div class="mob-sel-info">
-          <span class="mob-sel-label">Ingrédient sélectionné</span>
-          <span class="mob-sel-name">${esc(selIng.name)}</span>
-          <span class="mob-sel-ref">Référence : ${esc(refText(selIng))} (${fmt(selIng.kcal)} kcal)</span>
-        </div>
-      </div>
-      ${variants.length > 1 ? `<div class="mob-unit-variants">
-        <span>Unité :</span>
-        ${variants.map(v => `<button class="mob-var-btn ${v.id === selIng.id ? 'on' : ''}" data-var="${v.id}" type="button">${esc(v.unit === 'piece' ? 'unité(s)' : v.unit)}</button>`).join('')}
-      </div>` : ''}
-      <div class="mob-qty-grid">
-        <div class="mob-qty-field">
-          <label for="mobIngQty">Quantité *</label>
-          <input id="mobIngQty" inputmode="decimal" value="${esc(MOB_QTY)}" placeholder="${selIng.unit === 'piece' ? 'Ex. 2' : 'Ex. 150'}" aria-label="Quantité">
-        </div>
-        <div class="mob-unit-field">
-          <label>Unité</label>
-          <div class="mob-unit-pill" title="Unité de référence de l'ingrédient">${esc(unitDisplay)}</div>
-        </div>
-      </div>
-      <div class="mob-presets" id="mobPresets">
-        <span>Rapide :</span>
-        ${presets.map(p => `<button class="mob-preset-btn" data-pre="${p}" type="button">${String(p).replace('.', ',')}</button>`).join('')}
-      </div>
-      <div id="mobEstLine" class="muted" style="font-size:.82rem;margin:-4px 0 10px" ${estKcal === null ? 'hidden' : ''}>
-        ${estKcal !== null ? `Apport estimé : <b>${estKcal} kcal</b>` : ''}
-      </div>
-      <button class="btn pri mob-add-cta" id="mobAddIngBtn" type="button">+ Ajouter à la recette</button>
-    </div>`;
-  }
-
-  const addedHtml = addedEntries.length
-    ? `<div class="mob-added-list" id="mobAddedList">
-        ${addedEntries.map(({ r, idx, ing }) => {
-          const isEditing = MOB_EDIT_IDX === idx;
-          const itemKcal = fmt((ing.kcal || 0) * (ing.unit === 'piece' ? num(r.quantity) : num(r.quantity) / 100));
-          const uLabel = ing.unit === 'piece' ? 'unité(s)' : ing.unit;
-          if (isEditing) {
-            return `<div class="mob-ing-card editing" data-card="${idx}">
-              <div>
-                <span class="mob-card-name">${esc(ing.name)}</span>
-                <span class="muted" style="font-size:.8rem">Modifier la quantité (en ${esc(uLabel)})</span>
-              </div>
-              <div class="mob-edit-row">
-                <button class="mob-step-btn" data-step="-1" type="button" aria-label="Diminuer">−</button>
-                <input class="mob-edit-input" id="mobEditQty" inputmode="decimal" value="${esc(r.quantity)}" aria-label="Nouvelle quantité">
-                <button class="mob-step-btn" data-step="1" type="button" aria-label="Augmenter">+</button>
-                <span class="mob-edit-unit">${esc(uLabel)}</span>
-              </div>
-              <div class="mob-edit-btns">
-                <button class="btn ghost sm" data-cancel-edit="${idx}" type="button">Annuler</button>
-                <button class="btn pri sm" data-save-edit="${idx}" type="button">Valider</button>
-              </div>
-            </div>`;
-          }
-          return `<div class="mob-ing-card" data-card="${idx}">
-            <div class="mob-card-info">
-              <span class="mob-card-name">${esc(ing.name)}</span>
-              <div class="mob-card-meta">
-                <span class="mob-card-qty">${esc(qtyLabel(ing, r.quantity))}</span>
-                <span class="mob-card-kcal">${itemKcal} kcal</span>
-              </div>
-            </div>
-            <div class="mob-card-actions">
-              <button class="mob-icon-btn" data-edit="${idx}" type="button" aria-label="Modifier ${esc(ing.name)}" title="Modifier">✎</button>
-              <button class="mob-icon-btn del" data-del="${idx}" type="button" aria-label="Supprimer ${esc(ing.name)}" title="Supprimer">✕</button>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`
-    : `<div class="mob-added-empty">Aucun ingrédient ajouté pour le moment.<br>Sélectionnez un ingrédient ci-dessus pour composer votre recette.</div>`;
-
-  host.innerHTML = `
-    <div class="mob-ing-head">
-      <label>Ingrédients *</label>
-      <span class="mob-ing-badge ${addedEntries.length ? 'has' : ''}">${addedEntries.length} ajouté${addedEntries.length > 1 ? 's' : ''}</span>
-    </div>
-    ${composerHtml}
-    <div class="mob-added-head">
-      <b>Ingrédients de la recette (${addedEntries.length})</b>
-    </div>
-    ${addedHtml}`;
-
-  /* Rendu dynamique de la liste de suggestions sans perdre le focus clavier */
-  const renderMobResults = () => {
-    const box = $('#mobIngResultsBox');
-    if (!box) return;
-    const q = norm(MOB_Q);
-    const matches = ING.filter(i => {
-      if (MOB_CAT && i.category !== MOB_CAT) return false;
-      if (q && !norm(i.name).includes(q)) return false;
-      return true;
-    }).sort((a, b) => {
-      if (!q) return 0;
-      const aStarts = norm(a.name).startsWith(q) ? 0 : 1;
-      const bStarts = norm(b.name).startsWith(q) ? 0 : 1;
-      return aStarts - bStarts;
-    });
-
-    if (!matches.length) {
-      box.innerHTML = `<div class="mob-res-empty" style="margin-top:10px">
-        Aucun ingrédient trouvé pour « ${esc(MOB_Q)} ».
-        <div style="margin-top:6px"><a href="#/ingredients" style="color:var(--accent);font-weight:700">+ Créer un nouvel ingrédient</a></div>
-      </div>`;
-      return;
-    }
-
-    const slice = matches.slice(0, 30);
-    box.innerHTML = `
-      <div class="mob-res-meta">
-        <span>${matches.length} résultat${matches.length > 1 ? 's' : ''}${matches.length > 30 ? ' (30 premiers)' : ''}</span>
-        <span>Touchez pour sélectionner</span>
-      </div>
-      <div class="mob-res-list">
-        ${slice.map(i => {
-          const uBadge = i.unit === 'piece' ? 'unité(s)' : i.unit;
-          const isAdded = addedIds.has(i.id);
-          return `<button class="mob-res-item" data-pick="${i.id}" type="button">
-            <div class="mob-res-main">
-              <span class="mob-res-name">${esc(i.name)}</span>
-              <span class="mob-res-sub">
-                ${i.category ? `<span>${esc(i.category)}</span>` : ''}
-                ${isAdded ? `<span class="mob-res-added">Déjà ajouté</span>` : ''}
-              </span>
-            </div>
-            <span class="mob-res-unit">${esc(uBadge)}</span>
-          </button>`;
-        }).join('')}
-      </div>`;
-
-    box.onclick = e => {
-      const btn = e.target.closest('[data-pick]');
-      if (!btn) return;
-      MOB_SEL_ID = btn.dataset.pick;
-      MOB_QTY = '';
-      drawMobileIng();
-      const qInp = $('#mobIngQty');
-      if (qInp) qInp.focus();
-    };
-  };
-
-  if (!selIng && ING.length) {
-    renderMobResults();
-    const sInp = $('#mobIngSearch');
-    const clrBtn = $('#mobClearSearch');
-    if (sInp) {
-      sInp.oninput = e => {
-        MOB_Q = e.target.value;
-        if (clrBtn) clrBtn.hidden = !MOB_Q;
-        renderMobResults();
-      };
-    }
-    if (clrBtn) {
-      clrBtn.onclick = () => {
-        MOB_Q = '';
-        if (sInp) { sInp.value = ''; sInp.focus(); }
-        clrBtn.hidden = true;
-        renderMobResults();
-      };
-    }
-    const catStrip = $('#mobCatPills');
-    if (catStrip) {
-      catStrip.onclick = e => {
-        const b = e.target.closest('[data-mcat]');
-        if (!b) return;
-        MOB_CAT = b.dataset.mcat;
-        catStrip.querySelectorAll('.mob-cat-chip').forEach(c => c.classList.toggle('on', c.dataset.mcat === MOB_CAT));
-        renderMobResults();
-      };
-    }
-  } else if (selIng) {
-    const commitAdd = () => {
-      const q = num(MOB_QTY);
-      if (q <= 0) {
-        toast('Indiquez une quantité supérieure à 0', true);
-        $('#mobIngQty')?.focus();
-        return;
-      }
-      if (F.rows.length === 1 && !F.rows[0].ingredient_id && F.rows[0].quantity === '') {
-        F.rows[0] = { ingredient_id: selIng.id, quantity: q };
-      } else {
-        F.rows.push({ ingredient_id: selIng.id, quantity: q });
-      }
-      MOB_SEL_ID = '';
-      MOB_QTY = '';
-      MOB_Q = '';
-      drawRows();
-      live();
-      saveDraft(FORM_EDIT_ID);
-      toast(`${selIng.name} ajouté`);
-    };
-
-    $('#mobChangeIng').onclick = () => {
-      MOB_SEL_ID = '';
-      MOB_QTY = '';
-      drawMobileIng();
-      $('#mobIngSearch')?.focus();
-    };
-
-    host.querySelectorAll('[data-var]').forEach(b => {
-      b.onclick = () => {
-        MOB_SEL_ID = b.dataset.var;
-        drawMobileIng();
-      };
-    });
-
-    const qInp = $('#mobIngQty');
-    const estLine = $('#mobEstLine');
-    const updateEst = () => {
-      const qv = num(MOB_QTY);
-      if (!estLine) return;
-      if (qv > 0) {
-        const kc = fmt((selIng.kcal || 0) * (selIng.unit === 'piece' ? qv : qv / 100));
-        estLine.innerHTML = `Apport estimé : <b>${kc} kcal</b>`;
-        estLine.hidden = false;
-      } else {
-        estLine.hidden = true;
-      }
-    };
-
-    qInp.oninput = e => {
-      MOB_QTY = e.target.value;
-      updateEst();
-    };
-    qInp.onkeydown = e => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        commitAdd();
-      }
-    };
-
-    $('#mobPresets').onclick = e => {
-      const b = e.target.closest('[data-pre]');
-      if (!b) return;
-      MOB_QTY = b.dataset.pre;
-      qInp.value = MOB_QTY;
-      updateEst();
-    };
-
-    $('#mobAddIngBtn').onclick = commitAdd;
-  }
-
-  /* Actions sur les cartes d'ingrédients déjà ajoutés */
-  const listEl = $('#mobAddedList');
-  if (listEl) {
-    listEl.onclick = e => {
-      const editBtn = e.target.closest('[data-edit]');
-      if (editBtn) {
-        MOB_EDIT_IDX = Number(editBtn.dataset.edit);
-        drawMobileIng();
-        const inp = $('#mobEditQty');
-        if (inp) { inp.focus(); inp.select(); }
-        return;
-      }
-
-      const delBtn = e.target.closest('[data-del]');
-      if (delBtn) {
-        const idx = Number(delBtn.dataset.del);
-        const removedIng = ING.find(x => x.id === F.rows[idx]?.ingredient_id);
-        F.rows.splice(idx, 1);
-        MOB_EDIT_IDX = null;
-        drawRows();
-        live();
-        saveDraft(FORM_EDIT_ID);
-        if (removedIng) toast(`${removedIng.name} retiré`);
-        return;
-      }
-
-      const cancelBtn = e.target.closest('[data-cancel-edit]');
-      if (cancelBtn) {
-        MOB_EDIT_IDX = null;
-        drawMobileIng();
-        return;
-      }
-
-      const stepBtn = e.target.closest('[data-step]');
-      if (stepBtn && MOB_EDIT_IDX !== null) {
-        const inp = $('#mobEditQty');
-        const row = F.rows[MOB_EDIT_IDX];
-        const ing = ING.find(x => x.id === row?.ingredient_id);
-        const delta = Number(stepBtn.dataset.step) * (ing?.unit === 'piece' ? 0.5 : 10);
-        const next = Math.max(ing?.unit === 'piece' ? 0.5 : 1, Math.round((num(inp.value) + delta) * 10) / 10);
-        inp.value = next;
-        return;
-      }
-
-      const saveBtn = e.target.closest('[data-save-edit]');
-      if (saveBtn) {
-        const idx = Number(saveBtn.dataset.saveEdit);
-        const inp = $('#mobEditQty');
-        const nextVal = num(inp?.value);
-        if (nextVal <= 0) {
-          toast('La quantité doit être supérieure à 0', true);
-          inp?.focus();
-          return;
-        }
-        F.rows[idx].quantity = nextVal;
-        MOB_EDIT_IDX = null;
-        drawRows();
-        live();
-        saveDraft(FORM_EDIT_ID);
-        toast('Quantité mise à jour');
-      }
-    };
-  }
+  $('#rows').onclick = e => { const n = e.target.dataset.rm; if (n !== undefined) { F.rows.splice(n, 1); drawRows(); live(); saveDraft(FORM_EDIT_ID); } };
 }
 
 function live() {
@@ -2304,6 +1901,269 @@ async function viewIng() {
     }
   };
   draw();
+}
+
+/* ============ Calendrier personnel des repas ============ */
+const MEAL_TYPES = [
+  ['petit-dejeuner', 'Petit-déjeuner'],
+  ['dejeuner', 'Déjeuner'],
+  ['diner', 'Dîner'],
+  ['autre', 'Autre']
+];
+const MEAL_TYPE_LABEL = Object.fromEntries(MEAL_TYPES);
+const MEAL_TYPE_ORDER = { 'petit-dejeuner': 1, 'dejeuner': 2, 'diner': 3, 'autre': 4 };
+
+const calIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const parseIso = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const startOfWeek = d => { const day = (d.getDay() + 6) % 7; return addDays(d, -day); };
+
+let CAL_VIEW = 'month'; // 'month' | 'week' | 'list'
+let CAL_CURSOR = new Date();
+let CAL_SELECTED = calIso(new Date());
+let CAL_FILTER_TYPE = '';
+let CAL_MEALS = [];
+
+function sortMeals(list) {
+  return [...list].sort((a, b) =>
+    (MEAL_TYPE_ORDER[a.meal_type] || 9) - (MEAL_TYPE_ORDER[b.meal_type] || 9) || (a.position || 0) - (b.position || 0)
+  );
+}
+
+function personalMealCardHtml(m) {
+  const titleHtml = m.recipe_id
+    ? `<a class="cal-card-title" href="#/recette/${m.recipe_id}">${esc(m.recipe_title)}</a>`
+    : `<span class="cal-card-title">${esc(m.recipe_title)}</span>`;
+  return `<div class="cal-card" data-meal="${m.id}">
+    ${m.recipe_cover_url
+      ? `<img class="cal-card-thumb" src="${esc(m.recipe_cover_url)}" alt="" loading="lazy">`
+      : `<div class="cal-card-thumb">🍽</div>`}
+    <div class="cal-card-body">
+      <span class="mtype ${esc(m.meal_type)}">${esc(MEAL_TYPE_LABEL[m.meal_type] || m.meal_type)}</span>
+      ${titleHtml}
+      ${m.note ? `<div class="cal-card-note">${esc(m.note)}</div>` : ''}
+    </div>
+    <div class="cal-card-acts" data-meal-actions="${m.id}"></div>
+  </div>`;
+}
+
+async function loadPersonalMealsRange(startIso, endIso) {
+  const rows = ok(await withTimeout(
+    db.from('personal_meals')
+      .select('*')
+      .eq('user_id', ME.id)
+      .gte('meal_date', startIso)
+      .lte('meal_date', endIso)
+      .order('meal_date', { ascending: true }),
+    15000,
+    'Le chargement du calendrier'
+  ));
+  CAL_MEALS = rows || [];
+}
+
+async function viewCalendar() {
+  if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
+
+  const todayIso = calIso(new Date());
+  const y = CAL_CURSOR.getFullYear(), m = CAL_CURSOR.getMonth();
+
+  let rangeStart, rangeEnd, periodTitle;
+  if (CAL_VIEW === 'month') {
+    const firstOfMonth = new Date(y, m, 1);
+    const lastOfMonth = new Date(y, m + 1, 0);
+    rangeStart = startOfWeek(firstOfMonth);
+    rangeEnd = addDays(startOfWeek(lastOfMonth), 6);
+    periodTitle = firstOfMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  } else if (CAL_VIEW === 'week') {
+    rangeStart = startOfWeek(CAL_CURSOR);
+    rangeEnd = addDays(rangeStart, 6);
+    const sTxt = rangeStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const eTxt = rangeEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+    periodTitle = `${sTxt} – ${eTxt}`;
+  } else {
+    rangeStart = parseIso(todayIso);
+    rangeEnd = addDays(rangeStart, 30);
+    periodTitle = 'Prochains repas (30 jours)';
+  }
+
+  await loadPersonalMealsRange(calIso(rangeStart), calIso(rangeEnd));
+
+  const visibleMeals = CAL_FILTER_TYPE
+    ? CAL_MEALS.filter(x => x.meal_type === CAL_FILTER_TYPE)
+    : CAL_MEALS;
+
+  const byDate = {};
+  visibleMeals.forEach(item => {
+    (byDate[item.meal_date] ||= []).push(item);
+  });
+  Object.keys(byDate).forEach(k => { byDate[k] = sortMeals(byDate[k]); });
+
+  let bodyHtml = '';
+  if (CAL_VIEW === 'month') {
+    const days = [];
+    for (let d = new Date(rangeStart); d <= rangeEnd; d = addDays(d, 1)) days.push(new Date(d));
+    const dows = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const selMeals = byDate[CAL_SELECTED] || [];
+    const selDateLabel = parseIso(CAL_SELECTED).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    bodyHtml = `
+      <div class="cal-grid-wrap">
+        <div class="cal-dow">${dows.map(d => `<div>${d}</div>`).join('')}</div>
+        <div class="cal-grid" id="calMonthGrid">
+          ${days.map(d => {
+            const iso = calIso(d);
+            const inMonth = d.getMonth() === m;
+            const dayMeals = byDate[iso] || [];
+            return `<div class="cal-cell ${inMonth ? '' : 'out'} ${iso === todayIso ? 'today' : ''} ${iso === CAL_SELECTED ? 'sel' : ''}" data-day="${iso}">
+              <div class="cal-cell-head">
+                <span class="cal-daynum">${d.getDate()}</span>
+                <button class="cal-cell-add" data-add-day="${iso}" type="button" title="Planifier un repas le ${esc(iso)}" aria-label="Ajouter un repas">+</button>
+              </div>
+              <div class="cal-dots">${dayMeals.slice(0, 5).map(x => `<span class="cal-dot ${esc(x.meal_type)}"></span>`).join('')}</div>
+              <div class="cal-mini-list">
+                ${dayMeals.map(x => `<div class="cal-pill-meal" data-open-meal="${x.id}" title="${esc(MEAL_TYPE_LABEL[x.meal_type] + ' : ' + x.recipe_title)}">
+                  ${x.recipe_cover_url ? `<img src="${esc(x.recipe_cover_url)}" alt="">` : ''}
+                  <span class="cal-pill-txt">${esc(x.recipe_title)}</span>
+                </div>`).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="cal-mob-daypanel panel" style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+          <h3 style="font-size:1.12rem;text-transform:capitalize">${esc(selDateLabel)}</h3>
+          <button class="btn pri sm" data-add-day="${CAL_SELECTED}" type="button">+ Repas</button>
+        </div>
+        ${selMeals.length
+          ? `<div style="display:flex;flex-direction:column;gap:8px">${selMeals.map(personalMealCardHtml).join('')}</div>`
+          : `<p class="muted" style="margin:0;font-size:.92rem">Aucun repas planifié pour cette journée.</p>`}
+      </div>`;
+  } else if (CAL_VIEW === 'week') {
+    const days = [];
+    for (let i = 0; i < 7; i++) days.push(addDays(rangeStart, i));
+    bodyHtml = `<div class="cal-week">
+      ${days.map(d => {
+        const iso = calIso(d);
+        const dayMeals = byDate[iso] || [];
+        const label = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+        return `<div class="cal-wday ${iso === todayIso ? 'today' : ''}">
+          <div class="cal-wday-head">
+            <b style="text-transform:capitalize">${esc(label)}</b>
+            <button class="cal-cell-add" data-add-day="${iso}" type="button" title="Ajouter un repas">+</button>
+          </div>
+          ${dayMeals.length
+            ? dayMeals.map(personalMealCardHtml).join('')
+            : `<p class="muted" style="margin:4px 0;font-size:.85rem">Aucun repas</p>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+  } else {
+    const datesWithMeals = Object.keys(byDate).sort();
+    bodyHtml = datesWithMeals.length
+      ? datesWithMeals.map(iso => {
+          const dLabel = parseIso(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+          return `<div class="panel cal-list-group" style="padding:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+              <h3 style="margin:0">${esc(dLabel)}</h3>
+              <button class="btn ghost sm" data-add-day="${iso}" type="button">+ Ajouter</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">${byDate[iso].map(personalMealCardHtml).join('')}</div>
+          </div>`;
+        }).join('')
+      : `<div class="empty">Aucun repas planifié sur les 30 prochains jours.<br><button class="btn pri" style="margin-top:14px" data-add-day="${todayIso}" type="button">+ Planifier mon premier repas</button></div>`;
+  }
+
+  app.innerHTML = `
+    <div class="cal-top">
+      <div>
+        <h1 style="font-size:clamp(1.7rem,4vw,2.35rem)">Calendrier des repas</h1>
+        <p class="muted" style="margin:4px 0 0">Organisez vos menus personnels en toute confidentialité.</p>
+      </div>
+      <div class="cal-spaces">
+        <button class="tab on" type="button">Mon calendrier</button>
+        <button class="tab" id="tabSharedSoon" type="button">Calendriers partagés</button>
+      </div>
+    </div>
+
+    <div class="cal-bar">
+      <div class="cal-nav">
+        <button class="btn ghost" id="calPrev" type="button" aria-label="Période précédente">‹</button>
+        <h2>${esc(periodTitle)}</h2>
+        <button class="btn ghost" id="calNext" type="button" aria-label="Période suivante">›</button>
+        <button class="btn ghost sm" id="calToday" type="button">Aujourd'hui</button>
+      </div>
+      <div class="cal-views" id="calViews">
+        <button class="${CAL_VIEW === 'month' ? 'on' : ''}" data-cview="month" type="button">Mois</button>
+        <button class="${CAL_VIEW === 'week' ? 'on' : ''}" data-cview="week" type="button">Semaine</button>
+        <button class="${CAL_VIEW === 'list' ? 'on' : ''}" data-cview="list" type="button">Liste</button>
+      </div>
+      <button class="btn pri" data-add-day="${CAL_SELECTED || todayIso}" type="button">+ Planifier un repas</button>
+    </div>
+
+    <div class="cal-filters" id="calTypeFilters">
+      <button class="pill ${CAL_FILTER_TYPE === '' ? 'on' : ''}" data-mtype="" type="button">Tous les repas</button>
+      ${MEAL_TYPES.map(([k, l]) => `<button class="pill ${CAL_FILTER_TYPE === k ? 'on' : ''}" data-mtype="${k}" type="button">${esc(l)}</button>`).join('')}
+    </div>
+
+    <div id="calBody">${bodyHtml}</div>`;
+
+  $('#tabSharedSoon').onclick = () => toast('Les calendriers partagés seront ajoutés à l’étape 5.');
+
+  $('#calPrev').onclick = () => {
+    CAL_CURSOR = CAL_VIEW === 'week'
+      ? addDays(CAL_CURSOR, -7)
+      : new Date(CAL_CURSOR.getFullYear(), CAL_CURSOR.getMonth() - 1, 1);
+    viewCalendar();
+  };
+  $('#calNext').onclick = () => {
+    CAL_CURSOR = CAL_VIEW === 'week'
+      ? addDays(CAL_CURSOR, 7)
+      : new Date(CAL_CURSOR.getFullYear(), CAL_CURSOR.getMonth() + 1, 1);
+    viewCalendar();
+  };
+  $('#calToday').onclick = () => {
+    CAL_CURSOR = new Date();
+    CAL_SELECTED = calIso(CAL_CURSOR);
+    viewCalendar();
+  };
+
+  $('#calViews').onclick = e => {
+    const b = e.target.closest('[data-cview]');
+    if (!b || b.dataset.cview === CAL_VIEW) return;
+    CAL_VIEW = b.dataset.cview;
+    viewCalendar();
+  };
+
+  $('#calTypeFilters').onclick = e => {
+    const b = e.target.closest('[data-mtype]');
+    if (!b) return;
+    CAL_FILTER_TYPE = b.dataset.mtype;
+    viewCalendar();
+  };
+
+  app.onclick = e => {
+    const addBtn = e.target.closest('[data-add-day]');
+    if (addBtn) {
+      openPersonalMealModal(addBtn.dataset.addDay);
+      return;
+    }
+    const mealPill = e.target.closest('[data-open-meal]');
+    if (mealPill) {
+      const mObj = CAL_MEALS.find(x => x.id === mealPill.dataset.openMeal);
+      if (mObj?.recipe_id) location.hash = `#/recette/${mObj.recipe_id}`;
+      return;
+    }
+    const dayCell = e.target.closest('[data-day]');
+    if (dayCell && CAL_VIEW === 'month') {
+      CAL_SELECTED = dayCell.dataset.day;
+      viewCalendar();
+    }
+  };
+}
+
+function openPersonalMealModal(dateIso) {
+  toast(`Planification pour le ${dateIso} : formulaire complet à l'étape 4.`);
 }
 
 boot();
