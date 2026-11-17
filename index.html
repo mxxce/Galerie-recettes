@@ -3204,7 +3204,7 @@ async function openCalendarMembersModal(cal) {
           const searchInp = body.querySelector('#cmSearchUser');
           const resBox = body.querySelector('#cmSearchResults');
           const runUserSearch = debounce(async () => {
-            const term = norm(searchInp.value);
+            const term = searchInp.value.trim().toLowerCase();
             if (term.length < 2) {
               resBox.innerHTML = '';
               return;
