@@ -2223,11 +2223,25 @@ const parseIso = s => { const [y, m, d] = String(s).split('-').map(Number); retu
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const startOfWeek = d => { const day = (d.getDay() + 6) % 7; return addDays(d, -day); };
 
+let CAL_OWNER_GUARD = '';
 let CAL_SPACE = 'personal'; // 'personal' | 'shared'
 let SHARED_CALS = [];
 let PENDING_INVITES = [];
 let ACTIVE_CAL_MEMBERS = [];
 let CAL_SHARED_ID = '';
+
+function resetCalendarState(uid = '') {
+  CAL_OWNER_GUARD = uid;
+  CAL_SPACE = 'personal';
+  SHARED_CALS = [];
+  PENDING_INVITES = [];
+  ACTIVE_CAL_MEMBERS = [];
+  CAL_SHARED_ID = '';
+  CAL_FILTER_TYPE = '';
+  CAL_FILTER_WHO = '';
+  CAL_MEALS = [];
+  MY_CAL_RECIPES = null;
+}
 let CAL_VIEW = 'month'; // 'month' | 'week' | 'list'
 let CAL_CURSOR = new Date();
 let CAL_SELECTED = calIso(new Date());
@@ -2443,7 +2457,8 @@ async function loadMealsRange(startIso, endIso) {
 }
 
 async function viewCalendar() {
-  if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
+  if (!SESSION || !ME) { resetCalendarState(''); location.hash = '#/connexion'; return; }
+  if (CAL_OWNER_GUARD !== ME.id) resetCalendarState(ME.id);
 
   await loadPendingInvitations();
 
