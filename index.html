@@ -2257,7 +2257,6 @@ function sortMeals(list) {
 }
 
 async function ensureMyCalRecipes() {
-  if (Array.isArray(MY_CAL_RECIPES)) return MY_CAL_RECIPES;
   const rows = ok(await withTimeout(
     db.from('recipes')
       .select('id, title, category, dish_type, cover_url, prep_min, cook_min, servings')
