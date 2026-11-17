@@ -244,31 +244,250 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 }
 @media(max-width:340px){.grid{grid-template-columns:1fr}}
 /* Correctif d'alignement et pleine largeur du calendrier */
+/* ============ Responsive Ordinateur, Tablette & Téléphone (Calendrier) ============ */
 main, #app {
   display: block;
   width: 100%;
 }
 .cal-top, .sc-bar, .inv-box, .cal-bar, .cal-filters, #calBody, .cal-grid-wrap {
-  display: block;
   width: 100%;
   max-width: 100%;
   clear: both;
 }
+#calBody, .cal-grid-wrap {
+  display: block;
+}
 .cal-top, .sc-bar, .cal-bar, .cal-filters {
   display: flex;
+}
+.cal-nav-main, .cal-nav-quick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .cal-dow, .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   width: 100%;
 }
+
+/* Tablette (621px à 1120px) */
+@media (max-width: 1120px) {
+  .cal-week {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .cal-bar {
+    gap: 10px;
+  }
+  .cal-fstatus {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 860px) {
+  .cal-cell {
+    min-height: 104px;
+    padding: 6px 5px;
+  }
+  .cal-pill-meal {
+    padding: 3px 5px;
+    font-size: .74rem;
+  }
+  .cal-pill-who {
+    display: none;
+  }
+}
+
+/* Téléphone (≤ 620px) */
 @media (max-width: 620px) {
-  .cal-cell { min-height: 52px; padding: 5px 2px; border-radius: 12px; align-items: center; justify-content: space-between; cursor: pointer; }
-  .cal-cell-head { justify-content: center; width: 100%; }
-  .cal-cell-add, .cal-mini-list { display: none; }
-  .cal-dots { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; min-height: 8px; }
-  .cal-mob-daypanel { display: block; margin-top: 14px; }
-  .cal-week { grid-template-columns: 1fr; }
+  /* Barre de navigation principale fluide au doigt */
+  nav#nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  nav#nav::-webkit-scrollbar {
+    display: none;
+  }
+  nav#nav a {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* Espace & sélecteur de calendriers partagés */
+  .cal-top {
+    gap: 10px;
+  }
+  .cal-spaces {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .cal-spaces .tab {
+    justify-content: center;
+    text-align: center;
+    padding: 9px 10px;
+    font-size: .88rem;
+  }
+  .sc-bar {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .sc-list {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .sc-list::-webkit-scrollbar {
+    display: none;
+  }
+  .sc-chip, .sc-list .btn {
+    flex: none;
+  }
+  .sc-meta {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Barre d'outils calendrier tactile */
+  .cal-bar {
+    padding: 12px;
+    gap: 10px;
+  }
+  .cal-nav {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .cal-nav-main {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .cal-nav-main h2 {
+    min-width: 0;
+    flex: 1;
+    font-size: 1.12rem;
+    text-align: center;
+  }
+  .cal-nav-main .btn {
+    min-width: 42px;
+    min-height: 40px;
+  }
+  .cal-nav-quick {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .cal-nav-quick .btn, .cal-date-inp {
+    flex: 1;
+    min-height: 38px;
+    text-align: center;
+  }
+  .cal-views {
+    width: 100%;
+  }
+  .cal-views button {
+    flex: 1;
+    padding: 8px 6px;
+    font-size: .86rem;
+    min-height: 38px;
+  }
+  .cal-bar > .btn.pri {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  /* Filtres compacts en défilement horizontal */
+  .cal-filters {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .cal-fgroup {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .cal-fgroup::-webkit-scrollbar {
+    display: none;
+  }
+  .cal-fgroup .pill, .cal-flabel {
+    flex: none;
+  }
+
+  /* Grille mensuelle compacte + panneau du jour sélectionné */
+  .cal-grid-wrap {
+    padding: 10px 8px;
+  }
+  .cal-dow {
+    gap: 3px;
+    font-size: .74rem;
+  }
+  .cal-grid {
+    gap: 4px;
+  }
+  .cal-cell {
+    min-height: 52px;
+    padding: 5px 2px;
+    border-radius: 12px;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+  .cal-cell-head {
+    justify-content: center;
+    width: 100%;
+  }
+  .cal-cell-add, .cal-mini-list {
+    display: none;
+  }
+  .cal-dots {
+    display: flex;
+    gap: 3px;
+    justify-content: center;
+    flex-wrap: wrap;
+    min-height: 8px;
+  }
+  .cal-mob-daypanel {
+    display: block;
+    margin-top: 14px;
+  }
+  .cal-week {
+    grid-template-columns: 1fr;
+  }
+
+  /* Cartes repas et boutons tactiles */
+  .cal-card {
+    padding: 12px;
+    gap: 10px;
+  }
+  .cal-card-body {
+    min-width: 0;
+    flex: 1 1 calc(100% - 66px);
+  }
+  .cal-card-acts {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    gap: 8px;
+  }
+  .cal-act-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
 }
 </style>
 </head>
@@ -2379,7 +2598,10 @@ async function viewCalendar() {
       </div>
       <div class="cal-mob-daypanel panel" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
-          <h3 style="font-size:1.12rem;text-transform:capitalize">${esc(selDateLabel)}</h3>
+          <div>
+            <h3 style="font-size:1.12rem;text-transform:capitalize;margin:0">${esc(selDateLabel)}</h3>
+            <span class="muted" style="font-size:.82rem">${selMeals.length ? `${selMeals.length} repas programmé${selMeals.length > 1 ? 's' : ''}` : 'Journée libre'}</span>
+          </div>
           ${canEdit ? `<button class="btn pri sm" data-add-day="${CAL_SELECTED}" type="button">+ Repas</button>` : ''}
         </div>
         ${selMeals.length
@@ -2439,11 +2661,15 @@ async function viewCalendar() {
     ${(!isShared || activeShared) ? `
       <div class="cal-bar">
         <div class="cal-nav">
-          <button class="btn ghost" id="calPrev" type="button" aria-label="Période précédente">‹</button>
-          <h2>${esc(periodTitle)}</h2>
-          <button class="btn ghost" id="calNext" type="button" aria-label="Période suivante">›</button>
-          <button class="btn ghost sm" id="calToday" type="button">Aujourd'hui</button>
-          <input type="date" id="calJumpDate" class="cal-date-inp" value="${calIso(CAL_CURSOR)}" title="Aller directement à une date" aria-label="Aller à une date">
+          <div class="cal-nav-main">
+            <button class="btn ghost" id="calPrev" type="button" aria-label="Période précédente">‹</button>
+            <h2>${esc(periodTitle)}</h2>
+            <button class="btn ghost" id="calNext" type="button" aria-label="Période suivante">›</button>
+          </div>
+          <div class="cal-nav-quick">
+            <button class="btn ghost sm" id="calToday" type="button">Aujourd'hui</button>
+            <input type="date" id="calJumpDate" class="cal-date-inp" value="${calIso(CAL_CURSOR)}" title="Aller directement à une date" aria-label="Aller à une date">
+          </div>
         </div>
         <div class="cal-views" id="calViews">
           <button class="${CAL_VIEW === 'month' ? 'on' : ''}" data-cview="month" type="button">Mois</button>
