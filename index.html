@@ -219,6 +219,33 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .phead{padding:18px;gap:14px}.av{width:68px;height:68px;font-size:1.6rem}
 }
 @media(max-width:340px){.grid{grid-template-columns:1fr}}
+/* Correctif d'alignement et pleine largeur du calendrier */
+main, #app {
+  display: block;
+  width: 100%;
+}
+.cal-top, .sc-bar, .inv-box, .cal-bar, .cal-filters, #calBody, .cal-grid-wrap {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  clear: both;
+}
+.cal-top, .sc-bar, .cal-bar, .cal-filters {
+  display: flex;
+}
+.cal-dow, .cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  width: 100%;
+}
+@media (max-width: 620px) {
+  .cal-cell { min-height: 52px; padding: 5px 2px; border-radius: 12px; align-items: center; justify-content: space-between; cursor: pointer; }
+  .cal-cell-head { justify-content: center; width: 100%; }
+  .cal-cell-add, .cal-mini-list { display: none; }
+  .cal-dots { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; min-height: 8px; }
+  .cal-mob-daypanel { display: block; margin-top: 14px; }
+  .cal-week { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
