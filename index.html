@@ -167,6 +167,13 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .perm-toggle{font:inherit;font-size:.78rem;font-weight:700;padding:6px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--mute);cursor:pointer;min-height:34px;white-space:nowrap}
 .perm-toggle.on{border-color:#BFD9C3;background:#E8F3EA;color:#235730}
 .role-guide{background:var(--bg);border-radius:12px;padding:9px 12px;font-size:.8rem;color:var(--mute);margin-bottom:10px;line-height:1.45}
+.cal-filters{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.cal-fgroup{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cal-flabel{font-size:.76rem;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.03em;margin-right:2px}
+.cal-pill-who-f{display:inline-flex;align-items:center;gap:6px;padding:5px 12px 5px 6px}
+.cal-pill-who-f .av.xs{width:20px;height:20px;font-size:.64rem}
+.cal-fstatus{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--mute);margin-left:auto}
+.cal-date-inp{width:auto;font:inherit;font-size:.84rem;font-weight:600;padding:6px 11px;border-radius:99px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;min-height:34px}
 .cal-mob-daypanel{display:none}
 .cal-list-group{margin-bottom:18px}
 .cal-list-group h3{font-size:1.1rem;margin-bottom:8px;text-transform:capitalize}
@@ -2006,6 +2013,7 @@ let CAL_VIEW = 'month'; // 'month' | 'week' | 'list'
 let CAL_CURSOR = new Date();
 let CAL_SELECTED = calIso(new Date());
 let CAL_FILTER_TYPE = '';
+let CAL_FILTER_WHO = '';
 let CAL_MEALS = [];
 let MY_CAL_RECIPES = null;
 
@@ -2260,9 +2268,25 @@ async function viewCalendar() {
     CAL_MEALS = [];
   }
 
-  const visibleMeals = CAL_FILTER_TYPE
-    ? CAL_MEALS.filter(x => x.meal_type === CAL_FILTER_TYPE)
-    : CAL_MEALS;
+  if (isShared && CAL_FILTER_WHO && CAL_FILTER_WHO !== 'everyone') {
+    const stillMember = ACTIVE_CAL_MEMBERS.some(mem => mem.user_id === CAL_FILTER_WHO);
+    if (!stillMember) CAL_FILTER_WHO = '';
+  }
+
+  const hasActiveFilters = Boolean(CAL_FILTER_TYPE || (isShared && CAL_FILTER_WHO));
+
+  const visibleMeals = CAL_MEALS.filter(x => {
+    if (CAL_FILTER_TYPE && x.meal_type !== CAL_FILTER_TYPE) return false;
+    if (isShared && CAL_FILTER_WHO) {
+      if (CAL_FILTER_WHO === 'everyone') {
+        if (x.for_everyone === false) return false;
+      } else {
+        const concernsPerson = x.for_everyone !== false || (x.assignee_ids || []).includes(CAL_FILTER_WHO);
+        if (!concernsPerson) return false;
+      }
+    }
+    return true;
+  });
 
   const byDate = {};
   visibleMeals.forEach(item => {
@@ -2394,7 +2418,9 @@ async function viewCalendar() {
             <div style="display:flex;flex-direction:column;gap:8px">${byDate[iso].map(x => mealCardHtml(x, { isShared, canEdit })).join('')}</div>
           </div>`;
         }).join('')
-      : `<div class="empty">Aucun repas planifié sur les 30 prochains jours.${canEdit ? `<br><button class="btn pri" style="margin-top:14px" data-add-day="${todayIso}" type="button">+ Planifier un repas</button>` : ''}</div>`;
+      : (hasActiveFilters && CAL_MEALS.length
+          ? `<div class="empty">Aucun repas ne correspond aux filtres sélectionnés.<br><button class="btn ghost" id="calEmptyReset" style="margin-top:14px" type="button">Afficher tous les repas</button></div>`
+          : `<div class="empty">Aucun repas planifié sur les 30 prochains jours.${canEdit ? `<br><button class="btn pri" style="margin-top:14px" data-add-day="${todayIso}" type="button">+ Planifier un repas</button>` : ''}</div>`);
   }
 
   app.innerHTML = `
@@ -2417,6 +2443,7 @@ async function viewCalendar() {
           <h2>${esc(periodTitle)}</h2>
           <button class="btn ghost" id="calNext" type="button" aria-label="Période suivante">›</button>
           <button class="btn ghost sm" id="calToday" type="button">Aujourd'hui</button>
+          <input type="date" id="calJumpDate" class="cal-date-inp" value="${calIso(CAL_CURSOR)}" title="Aller directement à une date" aria-label="Aller à une date">
         </div>
         <div class="cal-views" id="calViews">
           <button class="${CAL_VIEW === 'month' ? 'on' : ''}" data-cview="month" type="button">Mois</button>
@@ -2426,9 +2453,30 @@ async function viewCalendar() {
         ${canEdit ? `<button class="btn pri" data-add-day="${CAL_SELECTED || todayIso}" type="button">+ Planifier un repas</button>` : ''}
       </div>
 
-      <div class="cal-filters" id="calTypeFilters">
-        <button class="pill ${CAL_FILTER_TYPE === '' ? 'on' : ''}" data-mtype="" type="button">Tous les repas</button>
-        ${MEAL_TYPES.map(([k, l]) => `<button class="pill ${CAL_FILTER_TYPE === k ? 'on' : ''}" data-mtype="${k}" type="button">${esc(l)}</button>`).join('')}
+      <div class="cal-filters" id="calFiltersBar">
+        <div class="cal-fgroup">
+          <span class="cal-flabel">Repas :</span>
+          <button class="pill ${CAL_FILTER_TYPE === '' ? 'on' : ''}" data-mtype="" type="button">Tous</button>
+          ${MEAL_TYPES.map(([k, l]) => `<button class="pill ${CAL_FILTER_TYPE === k ? 'on' : ''}" data-mtype="${k}" type="button">${esc(l)}</button>`).join('')}
+        </div>
+
+        ${isShared ? `
+          <div class="cal-fgroup">
+            <span class="cal-flabel">Pour :</span>
+            <button class="pill ${CAL_FILTER_WHO === '' ? 'on' : ''}" data-mwho="" type="button">Tous</button>
+            <button class="pill ${CAL_FILTER_WHO === 'everyone' ? 'on' : ''}" data-mwho="everyone" type="button">Tout le monde</button>
+            ${ACTIVE_CAL_MEMBERS.map(mem => `
+              <button class="pill cal-pill-who-f ${CAL_FILTER_WHO === mem.user_id ? 'on' : ''}" data-mwho="${mem.user_id}" type="button">
+                ${avatarHtml({ id: mem.user_id, pseudo: mem.pseudo, avatar_url: mem.avatar_url }, 'xs')}
+                <span>@${esc(mem.pseudo)}</span>
+              </button>`).join('')}
+          </div>` : ''}
+
+        ${hasActiveFilters ? `
+          <div class="cal-fstatus">
+            <span>${visibleMeals.length} / ${CAL_MEALS.length} repas</span>
+            <button class="btn ghost sm" id="calResetFilters" type="button">Réinitialiser</button>
+          </div>` : ''}
       </div>
     ` : ''}
 
@@ -2438,6 +2486,7 @@ async function viewCalendar() {
     const b = e.target.closest('[data-space]');
     if (!b || b.dataset.space === CAL_SPACE) return;
     CAL_SPACE = b.dataset.space;
+    CAL_FILTER_WHO = '';
     viewCalendar();
   };
 
@@ -2487,6 +2536,7 @@ async function viewCalendar() {
       const b = e.target.closest('[data-pick-cal]');
       if (!b || b.dataset.pickCal === CAL_SHARED_ID) return;
       CAL_SHARED_ID = b.dataset.pickCal;
+      CAL_FILTER_WHO = '';
       viewCalendar();
     };
   }
@@ -2530,19 +2580,46 @@ async function viewCalendar() {
       CAL_SELECTED = calIso(CAL_CURSOR);
       viewCalendar();
     };
+    if ($('#calJumpDate')) {
+      $('#calJumpDate').onchange = e => {
+        if (!e.target.value) return;
+        CAL_CURSOR = parseIso(e.target.value);
+        CAL_SELECTED = e.target.value;
+        viewCalendar();
+      };
+    }
     $('#calViews').onclick = e => {
       const b = e.target.closest('[data-cview]');
       if (!b || b.dataset.cview === CAL_VIEW) return;
       CAL_VIEW = b.dataset.cview;
       viewCalendar();
     };
-    $('#calTypeFilters').onclick = e => {
-      const b = e.target.closest('[data-mtype]');
-      if (!b) return;
-      CAL_FILTER_TYPE = b.dataset.mtype;
-      viewCalendar();
+    $('#calFiltersBar').onclick = e => {
+      const tBtn = e.target.closest('[data-mtype]');
+      if (tBtn) {
+        CAL_FILTER_TYPE = tBtn.dataset.mtype;
+        viewCalendar();
+        return;
+      }
+      const wBtn = e.target.closest('[data-mwho]');
+      if (wBtn) {
+        CAL_FILTER_WHO = wBtn.dataset.mwho;
+        viewCalendar();
+        return;
+      }
+      if (e.target.closest('#calResetFilters')) {
+        CAL_FILTER_TYPE = '';
+        CAL_FILTER_WHO = '';
+        viewCalendar();
+      }
     };
-  }
+    if ($('#calEmptyReset')) {
+      $('#calEmptyReset').onclick = () => {
+        CAL_FILTER_TYPE = '';
+        CAL_FILTER_WHO = '';
+        viewCalendar();
+      };
+    }
 
   app.onclick = e => {
     const addBtn = e.target.closest('[data-add-day]');
