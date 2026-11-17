@@ -131,6 +131,14 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .cal-wday .cal-card-thumb{width:38px;height:38px;border-radius:10px;font-size:1rem}
 .cal-wday .cal-card-body{min-width:0;flex:1 1 100%}
 .cal-wday .cal-card-acts{width:100%;justify-content:flex-end;padding-top:6px;border-top:1px solid var(--line)}
+.sc-bar{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sc-list{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sc-chip{font:inherit;font-size:.9rem;font-weight:600;padding:8px 14px;border-radius:99px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.sc-chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.sc-role{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(36,48,32,.09);color:inherit}
+.sc-chip.on .sc-role{background:rgba(255,255,255,.2)}
+.sc-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.m-assign{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:#EEF2E4;color:var(--ink);margin-left:4px}
 .cal-mob-daypanel{display:none}
 .cal-list-group{margin-bottom:18px}
 .cal-list-group h3{font-size:1.1rem;margin-bottom:8px;text-transform:capitalize}
@@ -1918,7 +1926,7 @@ async function viewIng() {
   draw();
 }
 
-/* ============ Calendrier personnel des repas ============ */
+/* ============ Calendrier personnel & partagé des repas ============ */
 const MEAL_TYPES = [
   ['petit-dejeuner', 'Petit-déjeuner'],
   ['dejeuner', 'Déjeuner'],
@@ -1927,25 +1935,28 @@ const MEAL_TYPES = [
 ];
 const MEAL_TYPE_LABEL = Object.fromEntries(MEAL_TYPES);
 const MEAL_TYPE_ORDER = { 'petit-dejeuner': 1, 'dejeuner': 2, 'diner': 3, 'autre': 4 };
+const CAL_ROLE_LABEL = { owner: 'Propriétaire', admin: 'Administrateur', member: 'Membre' };
 
 const calIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const parseIso = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const startOfWeek = d => { const day = (d.getDay() + 6) % 7; return addDays(d, -day); };
 
+let CAL_SPACE = 'personal'; // 'personal' | 'shared'
+let SHARED_CALS = [];
+let CAL_SHARED_ID = '';
 let CAL_VIEW = 'month'; // 'month' | 'week' | 'list'
 let CAL_CURSOR = new Date();
 let CAL_SELECTED = calIso(new Date());
 let CAL_FILTER_TYPE = '';
 let CAL_MEALS = [];
+let MY_CAL_RECIPES = null;
 
 function sortMeals(list) {
   return [...list].sort((a, b) =>
     (MEAL_TYPE_ORDER[a.meal_type] || 9) - (MEAL_TYPE_ORDER[b.meal_type] || 9) || (a.position || 0) - (b.position || 0)
   );
 }
-
-let MY_CAL_RECIPES = null;
 
 async function ensureMyCalRecipes() {
   if (Array.isArray(MY_CAL_RECIPES)) return MY_CAL_RECIPES;
@@ -1961,43 +1972,113 @@ async function ensureMyCalRecipes() {
   return MY_CAL_RECIPES;
 }
 
-function personalMealCardHtml(m) {
+async function loadSharedCalendars() {
+  const rows = ok(await withTimeout(
+    db.from('shared_calendar_members')
+      .select('calendar_id, role, can_edit_meals, joined_at, shared_calendars(id, name, created_by, created_at)')
+      .eq('user_id', ME.id)
+      .order('joined_at', { ascending: true }),
+    15000,
+    'Le chargement des calendriers partagés'
+  ));
+
+  const list = (rows || [])
+    .filter(r => r.shared_calendars)
+    .map(r => ({
+      id: r.shared_calendars.id,
+      name: r.shared_calendars.name,
+      created_by: r.shared_calendars.created_by,
+      role: r.role,
+      can_edit_meals: r.can_edit_meals,
+      memberCount: 1
+    }));
+
+  if (list.length) {
+    const ids = list.map(c => c.id);
+    const mRows = ok(await withTimeout(
+      db.from('shared_calendar_members').select('calendar_id').in('calendar_id', ids),
+      10000
+    ));
+    const counts = {};
+    (mRows || []).forEach(x => { counts[x.calendar_id] = (counts[x.calendar_id] || 0) + 1; });
+    list.forEach(c => { c.memberCount = counts[c.id] || 1; });
+  }
+
+  SHARED_CALS = list;
+  if (SHARED_CALS.length && !SHARED_CALS.some(c => c.id === CAL_SHARED_ID)) {
+    CAL_SHARED_ID = SHARED_CALS[0].id;
+  } else if (!SHARED_CALS.length) {
+    CAL_SHARED_ID = '';
+  }
+}
+
+function mealCardHtml(m, { isShared = false, canEdit = true } = {}) {
   const titleHtml = m.recipe_id
     ? `<a class="cal-card-title" href="#/recette/${m.recipe_id}">${esc(m.recipe_title)}</a>`
     : `<span class="cal-card-title">${esc(m.recipe_title)}</span>`;
+  const assignBadge = isShared
+    ? `<span class="m-assign">${m.for_everyone !== false ? 'Tout le monde' : 'Personnalisé'}</span>`
+    : '';
   return `<div class="cal-card" data-meal="${m.id}">
     ${m.recipe_cover_url
       ? `<img class="cal-card-thumb" src="${esc(m.recipe_cover_url)}" alt="" loading="lazy">`
       : `<div class="cal-card-thumb">🍽</div>`}
     <div class="cal-card-body">
-      <span class="mtype ${esc(m.meal_type)}">${esc(MEAL_TYPE_LABEL[m.meal_type] || m.meal_type)}</span>
+      <div>
+        <span class="mtype ${esc(m.meal_type)}">${esc(MEAL_TYPE_LABEL[m.meal_type] || m.meal_type)}</span>
+        ${assignBadge}
+      </div>
       ${titleHtml}
       ${m.note ? `<div class="cal-card-note">${esc(m.note)}</div>` : ''}
     </div>
-    <div class="cal-card-acts">
+    ${canEdit ? `<div class="cal-card-acts">
       <button class="cal-act-btn" data-move-meal="${m.id}" type="button" title="Déplacer vers un autre jour" aria-label="Déplacer">⇄</button>
       <button class="cal-act-btn" data-edit-meal="${m.id}" type="button" title="Modifier ce repas" aria-label="Modifier">✎</button>
       <button class="cal-act-btn del" data-del-meal="${m.id}" type="button" title="Supprimer ce repas" aria-label="Supprimer">✕</button>
-    </div>
+    </div>` : ''}
   </div>`;
 }
 
-async function loadPersonalMealsRange(startIso, endIso) {
-  const rows = ok(await withTimeout(
-    db.from('personal_meals')
-      .select('*')
-      .eq('user_id', ME.id)
-      .gte('meal_date', startIso)
-      .lte('meal_date', endIso)
-      .order('meal_date', { ascending: true }),
-    15000,
-    'Le chargement du calendrier'
-  ));
-  CAL_MEALS = rows || [];
+async function loadMealsRange(startIso, endIso) {
+  if (CAL_SPACE === 'shared') {
+    if (!CAL_SHARED_ID) { CAL_MEALS = []; return; }
+    const rows = ok(await withTimeout(
+      db.from('shared_calendar_meals')
+        .select('*')
+        .eq('calendar_id', CAL_SHARED_ID)
+        .gte('meal_date', startIso)
+        .lte('meal_date', endIso)
+        .order('meal_date', { ascending: true }),
+      15000,
+      'Le chargement des repas partagés'
+    ));
+    CAL_MEALS = rows || [];
+  } else {
+    const rows = ok(await withTimeout(
+      db.from('personal_meals')
+        .select('*')
+        .eq('user_id', ME.id)
+        .gte('meal_date', startIso)
+        .lte('meal_date', endIso)
+        .order('meal_date', { ascending: true }),
+      15000,
+      'Le chargement du calendrier'
+    ));
+    CAL_MEALS = rows || [];
+  }
 }
 
 async function viewCalendar() {
   if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
+
+  let activeShared = null;
+  if (CAL_SPACE === 'shared') {
+    await loadSharedCalendars();
+    activeShared = SHARED_CALS.find(c => c.id === CAL_SHARED_ID) || null;
+  }
+
+  const isShared = CAL_SPACE === 'shared';
+  const canEdit = !isShared || (!!activeShared && (activeShared.role === 'owner' || activeShared.role === 'admin' || activeShared.can_edit_meals));
 
   const todayIso = calIso(new Date());
   const y = CAL_CURSOR.getFullYear(), m = CAL_CURSOR.getMonth();
@@ -2021,7 +2102,11 @@ async function viewCalendar() {
     periodTitle = 'Prochains repas (30 jours)';
   }
 
-  await loadPersonalMealsRange(calIso(rangeStart), calIso(rangeEnd));
+  if (!isShared || activeShared) {
+    await loadMealsRange(calIso(rangeStart), calIso(rangeEnd));
+  } else {
+    CAL_MEALS = [];
+  }
 
   const visibleMeals = CAL_FILTER_TYPE
     ? CAL_MEALS.filter(x => x.meal_type === CAL_FILTER_TYPE)
@@ -2033,8 +2118,33 @@ async function viewCalendar() {
   });
   Object.keys(byDate).forEach(k => { byDate[k] = sortMeals(byDate[k]); });
 
+  const sharedSwitcherHtml = isShared ? `
+    <div class="sc-bar">
+      <div class="sc-list" id="scSelector">
+        ${SHARED_CALS.map(c => `
+          <button class="sc-chip ${c.id === CAL_SHARED_ID ? 'on' : ''}" data-pick-cal="${c.id}" type="button">
+            <span>${esc(c.name)}</span>
+            <span class="sc-role">${esc(CAL_ROLE_LABEL[c.role] || c.role)}</span>
+          </button>`).join('')}
+        <button class="btn ghost sm" id="newSharedCalBtn" type="button">+ Nouveau calendrier</button>
+      </div>
+      ${activeShared ? `<div class="sc-meta">
+        <span class="muted" style="font-size:.86rem">${activeShared.memberCount} membre${activeShared.memberCount > 1 ? 's' : ''}</span>
+        ${(activeShared.role === 'owner' || activeShared.role === 'admin')
+          ? `<button class="btn ghost sm" id="renameSharedCalBtn" type="button">Renommer</button>` : ''}
+        ${activeShared.role === 'owner'
+          ? `<button class="btn del sm" id="deleteSharedCalBtn" type="button">Supprimer</button>` : ''}
+      </div>` : ''}
+    </div>` : '';
+
   let bodyHtml = '';
-  if (CAL_VIEW === 'month') {
+  if (isShared && !activeShared) {
+    bodyHtml = `<div class="empty">
+      <h2 style="margin-bottom:8px">Aucun calendrier partagé pour le moment</h2>
+      <p style="max-width:480px;margin:0 auto 18px">Créez un calendrier commun (par exemple « Famille ») pour planifier et partager vos menus à plusieurs.</p>
+      <button class="btn pri" id="emptyCreateSharedBtn" type="button">+ Créer un calendrier partagé</button>
+    </div>`;
+  } else if (CAL_VIEW === 'month') {
     const days = [];
     for (let d = new Date(rangeStart); d <= rangeEnd; d = addDays(d, 1)) days.push(new Date(d));
     const dows = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -2052,7 +2162,7 @@ async function viewCalendar() {
             return `<div class="cal-cell ${inMonth ? '' : 'out'} ${iso === todayIso ? 'today' : ''} ${iso === CAL_SELECTED ? 'sel' : ''}" data-day="${iso}">
               <div class="cal-cell-head">
                 <span class="cal-daynum">${d.getDate()}</span>
-                <button class="cal-cell-add" data-add-day="${iso}" type="button" title="Planifier un repas le ${esc(iso)}" aria-label="Ajouter un repas">+</button>
+                ${canEdit ? `<button class="cal-cell-add" data-add-day="${iso}" type="button" title="Planifier un repas le ${esc(iso)}" aria-label="Ajouter un repas">+</button>` : ''}
               </div>
               <div class="cal-dots">${dayMeals.slice(0, 5).map(x => `<span class="cal-dot ${esc(x.meal_type)}"></span>`).join('')}</div>
               <div class="cal-mini-list">
@@ -2068,10 +2178,10 @@ async function viewCalendar() {
       <div class="cal-mob-daypanel panel" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
           <h3 style="font-size:1.12rem;text-transform:capitalize">${esc(selDateLabel)}</h3>
-          <button class="btn pri sm" data-add-day="${CAL_SELECTED}" type="button">+ Repas</button>
+          ${canEdit ? `<button class="btn pri sm" data-add-day="${CAL_SELECTED}" type="button">+ Repas</button>` : ''}
         </div>
         ${selMeals.length
-          ? `<div style="display:flex;flex-direction:column;gap:8px">${selMeals.map(personalMealCardHtml).join('')}</div>`
+          ? `<div style="display:flex;flex-direction:column;gap:8px">${selMeals.map(x => mealCardHtml(x, { isShared, canEdit })).join('')}</div>`
           : `<p class="muted" style="margin:0;font-size:.92rem">Aucun repas planifié pour cette journée.</p>`}
       </div>`;
   } else if (CAL_VIEW === 'week') {
@@ -2085,10 +2195,10 @@ async function viewCalendar() {
         return `<div class="cal-wday ${iso === todayIso ? 'today' : ''}">
           <div class="cal-wday-head">
             <b style="text-transform:capitalize">${esc(label)}</b>
-            <button class="cal-cell-add" data-add-day="${iso}" type="button" title="Ajouter un repas">+</button>
+            ${canEdit ? `<button class="cal-cell-add" data-add-day="${iso}" type="button" title="Ajouter un repas">+</button>` : ''}
           </div>
           ${dayMeals.length
-            ? dayMeals.map(personalMealCardHtml).join('')
+            ? dayMeals.map(x => mealCardHtml(x, { isShared, canEdit })).join('')
             : `<p class="muted" style="margin:4px 0;font-size:.85rem">Aucun repas</p>`}
         </div>`;
       }).join('')}
@@ -2101,110 +2211,155 @@ async function viewCalendar() {
           return `<div class="panel cal-list-group" style="padding:16px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
               <h3 style="margin:0">${esc(dLabel)}</h3>
-              <button class="btn ghost sm" data-add-day="${iso}" type="button">+ Ajouter</button>
+              ${canEdit ? `<button class="btn ghost sm" data-add-day="${iso}" type="button">+ Ajouter</button>` : ''}
             </div>
-            <div style="display:flex;flex-direction:column;gap:8px">${byDate[iso].map(personalMealCardHtml).join('')}</div>
+            <div style="display:flex;flex-direction:column;gap:8px">${byDate[iso].map(x => mealCardHtml(x, { isShared, canEdit })).join('')}</div>
           </div>`;
         }).join('')
-      : `<div class="empty">Aucun repas planifié sur les 30 prochains jours.<br><button class="btn pri" style="margin-top:14px" data-add-day="${todayIso}" type="button">+ Planifier mon premier repas</button></div>`;
+      : `<div class="empty">Aucun repas planifié sur les 30 prochains jours.${canEdit ? `<br><button class="btn pri" style="margin-top:14px" data-add-day="${todayIso}" type="button">+ Planifier un repas</button>` : ''}</div>`;
   }
 
   app.innerHTML = `
     <div class="cal-top">
       <div>
-        <h1 style="font-size:clamp(1.7rem,4vw,2.35rem)">Calendrier des repas</h1>
-        <p class="muted" style="margin:4px 0 0">Organisez vos menus personnels en toute confidentialité.</p>
+        <h1 style="font-size:clamp(1.7rem,4vw,2.35rem)">${isShared ? (activeShared ? esc(activeShared.name) : 'Calendriers partagés') : 'Mon calendrier'}</h1>
+        <p class="muted" style="margin:4px 0 0">${isShared ? 'Planifiez vos repas communs en famille ou entre proches.' : 'Organisez vos menus personnels en toute confidentialité.'}</p>
       </div>
-      <div class="cal-spaces">
-        <button class="tab on" type="button">Mon calendrier</button>
-        <button class="tab" id="tabSharedSoon" type="button">Calendriers partagés</button>
+      <div class="cal-spaces" id="calSpaceSwitch">
+        <button class="tab ${!isShared ? 'on' : ''}" data-space="personal" type="button">Mon calendrier</button>
+        <button class="tab ${isShared ? 'on' : ''}" data-space="shared" type="button">Calendriers partagés</button>
       </div>
     </div>
 
-    <div class="cal-bar">
-      <div class="cal-nav">
-        <button class="btn ghost" id="calPrev" type="button" aria-label="Période précédente">‹</button>
-        <h2>${esc(periodTitle)}</h2>
-        <button class="btn ghost" id="calNext" type="button" aria-label="Période suivante">›</button>
-        <button class="btn ghost sm" id="calToday" type="button">Aujourd'hui</button>
-      </div>
-      <div class="cal-views" id="calViews">
-        <button class="${CAL_VIEW === 'month' ? 'on' : ''}" data-cview="month" type="button">Mois</button>
-        <button class="${CAL_VIEW === 'week' ? 'on' : ''}" data-cview="week" type="button">Semaine</button>
-        <button class="${CAL_VIEW === 'list' ? 'on' : ''}" data-cview="list" type="button">Liste</button>
-      </div>
-      <button class="btn pri" data-add-day="${CAL_SELECTED || todayIso}" type="button">+ Planifier un repas</button>
-    </div>
+    ${sharedSwitcherHtml}
 
-    <div class="cal-filters" id="calTypeFilters">
-      <button class="pill ${CAL_FILTER_TYPE === '' ? 'on' : ''}" data-mtype="" type="button">Tous les repas</button>
-      ${MEAL_TYPES.map(([k, l]) => `<button class="pill ${CAL_FILTER_TYPE === k ? 'on' : ''}" data-mtype="${k}" type="button">${esc(l)}</button>`).join('')}
-    </div>
+    ${(!isShared || activeShared) ? `
+      <div class="cal-bar">
+        <div class="cal-nav">
+          <button class="btn ghost" id="calPrev" type="button" aria-label="Période précédente">‹</button>
+          <h2>${esc(periodTitle)}</h2>
+          <button class="btn ghost" id="calNext" type="button" aria-label="Période suivante">›</button>
+          <button class="btn ghost sm" id="calToday" type="button">Aujourd'hui</button>
+        </div>
+        <div class="cal-views" id="calViews">
+          <button class="${CAL_VIEW === 'month' ? 'on' : ''}" data-cview="month" type="button">Mois</button>
+          <button class="${CAL_VIEW === 'week' ? 'on' : ''}" data-cview="week" type="button">Semaine</button>
+          <button class="${CAL_VIEW === 'list' ? 'on' : ''}" data-cview="list" type="button">Liste</button>
+        </div>
+        ${canEdit ? `<button class="btn pri" data-add-day="${CAL_SELECTED || todayIso}" type="button">+ Planifier un repas</button>` : ''}
+      </div>
+
+      <div class="cal-filters" id="calTypeFilters">
+        <button class="pill ${CAL_FILTER_TYPE === '' ? 'on' : ''}" data-mtype="" type="button">Tous les repas</button>
+        ${MEAL_TYPES.map(([k, l]) => `<button class="pill ${CAL_FILTER_TYPE === k ? 'on' : ''}" data-mtype="${k}" type="button">${esc(l)}</button>`).join('')}
+      </div>
+    ` : ''}
 
     <div id="calBody">${bodyHtml}</div>`;
 
-  $('#tabSharedSoon').onclick = () => toast('Les calendriers partagés seront ajoutés à l’étape 5.');
-
-  $('#calPrev').onclick = () => {
-    CAL_CURSOR = CAL_VIEW === 'week'
-      ? addDays(CAL_CURSOR, -7)
-      : new Date(CAL_CURSOR.getFullYear(), CAL_CURSOR.getMonth() - 1, 1);
-    viewCalendar();
-  };
-  $('#calNext').onclick = () => {
-    CAL_CURSOR = CAL_VIEW === 'week'
-      ? addDays(CAL_CURSOR, 7)
-      : new Date(CAL_CURSOR.getFullYear(), CAL_CURSOR.getMonth() + 1, 1);
-    viewCalendar();
-  };
-  $('#calToday').onclick = () => {
-    CAL_CURSOR = new Date();
-    CAL_SELECTED = calIso(CAL_CURSOR);
+  $('#calSpaceSwitch').onclick = e => {
+    const b = e.target.closest('[data-space]');
+    if (!b || b.dataset.space === CAL_SPACE) return;
+    CAL_SPACE = b.dataset.space;
     viewCalendar();
   };
 
-  $('#calViews').onclick = e => {
-    const b = e.target.closest('[data-cview]');
-    if (!b || b.dataset.cview === CAL_VIEW) return;
-    CAL_VIEW = b.dataset.cview;
-    viewCalendar();
-  };
+  if ($('#newSharedCalBtn')) $('#newSharedCalBtn').onclick = () => openCreateSharedCalendarModal();
+  if ($('#emptyCreateSharedBtn')) $('#emptyCreateSharedBtn').onclick = () => openCreateSharedCalendarModal();
 
-  $('#calTypeFilters').onclick = e => {
-    const b = e.target.closest('[data-mtype]');
-    if (!b) return;
-    CAL_FILTER_TYPE = b.dataset.mtype;
-    viewCalendar();
-  };
+  if ($('#scSelector')) {
+    $('#scSelector').onclick = e => {
+      const b = e.target.closest('[data-pick-cal]');
+      if (!b || b.dataset.pickCal === CAL_SHARED_ID) return;
+      CAL_SHARED_ID = b.dataset.pickCal;
+      viewCalendar();
+    };
+  }
+
+  if ($('#renameSharedCalBtn') && activeShared) {
+    $('#renameSharedCalBtn').onclick = () => openRenameSharedCalendarModal(activeShared);
+  }
+
+  if ($('#deleteSharedCalBtn') && activeShared) {
+    $('#deleteSharedCalBtn').onclick = () => confirmDialog({
+      title: 'Supprimer ce calendrier partagé ?',
+      name: activeShared.name,
+      text: 'Tous les repas programmés et les accès des membres de ce calendrier seront supprimés définitivement.',
+      confirmLabel: 'Supprimer le calendrier',
+      onConfirm: async () => {
+        await safeMutate(async () => {
+          ok(await db.from('shared_calendars').delete().eq('id', activeShared.id));
+        }, 'La suppression du calendrier');
+        CAL_SHARED_ID = '';
+        toast('Calendrier partagé supprimé');
+        await viewCalendar();
+      }
+    });
+  }
+
+  if ($('#calPrev')) {
+    $('#calPrev').onclick = () => {
+      CAL_CURSOR = CAL_VIEW === 'week'
+        ? addDays(CAL_CURSOR, -7)
+        : new Date(CAL_CURSOR.getFullYear(), CAL_CURSOR.getMonth() - 1, 1);
+      viewCalendar();
+    };
+    $('#calNext').onclick = () => {
+      CAL_CURSOR = CAL_VIEW === 'week'
+        ? addDays(CAL_CURSOR, 7)
+        : new Date(CAL_CURSOR.getFullYear(), CAL_CURSOR.getMonth() + 1, 1);
+      viewCalendar();
+    };
+    $('#calToday').onclick = () => {
+      CAL_CURSOR = new Date();
+      CAL_SELECTED = calIso(CAL_CURSOR);
+      viewCalendar();
+    };
+    $('#calViews').onclick = e => {
+      const b = e.target.closest('[data-cview]');
+      if (!b || b.dataset.cview === CAL_VIEW) return;
+      CAL_VIEW = b.dataset.cview;
+      viewCalendar();
+    };
+    $('#calTypeFilters').onclick = e => {
+      const b = e.target.closest('[data-mtype]');
+      if (!b) return;
+      CAL_FILTER_TYPE = b.dataset.mtype;
+      viewCalendar();
+    };
+  }
 
   app.onclick = e => {
     const addBtn = e.target.closest('[data-add-day]');
-    if (addBtn) {
-      openPersonalMealModal(addBtn.dataset.addDay, null);
+    if (addBtn && canEdit) {
+      openMealModal(addBtn.dataset.addDay, null);
       return;
     }
     const mealPill = e.target.closest('[data-open-meal]');
     if (mealPill) {
       const mObj = CAL_MEALS.find(x => x.id === mealPill.dataset.openMeal);
-      if (mObj) openPersonalMealModal(mObj.meal_date, mObj);
+      if (mObj) {
+        if (canEdit) openMealModal(mObj.meal_date, mObj);
+        else if (mObj.recipe_id) location.hash = `#/recette/${mObj.recipe_id}`;
+      }
       return;
     }
     const moveBtn = e.target.closest('[data-move-meal]');
-    if (moveBtn) {
+    if (moveBtn && canEdit) {
       const mObj = CAL_MEALS.find(x => x.id === moveBtn.dataset.moveMeal);
-      if (mObj) openMovePersonalMealModal(mObj);
+      if (mObj) openMoveMealModal(mObj);
       return;
     }
     const editBtn = e.target.closest('[data-edit-meal]');
-    if (editBtn) {
+    if (editBtn && canEdit) {
       const mObj = CAL_MEALS.find(x => x.id === editBtn.dataset.editMeal);
-      if (mObj) openPersonalMealModal(mObj.meal_date, mObj);
+      if (mObj) openMealModal(mObj.meal_date, mObj);
       return;
     }
     const delBtn = e.target.closest('[data-del-meal]');
-    if (delBtn) {
+    if (delBtn && canEdit) {
       const mObj = CAL_MEALS.find(x => x.id === delBtn.dataset.delMeal);
-      if (mObj) confirmDeletePersonalMeal(mObj);
+      if (mObj) confirmDeleteMeal(mObj);
       return;
     }
     const dayCell = e.target.closest('[data-day]');
@@ -2215,15 +2370,94 @@ async function viewCalendar() {
   };
 }
 
-function confirmDeletePersonalMeal(meal, onDeleted) {
+function openCreateSharedCalendarModal() {
+  openModal(`
+    <h2>Nouveau calendrier partagé</h2>
+    <p class="muted" style="margin-bottom:14px">Créez un espace commun indépendant pour organiser vos repas à plusieurs.</p>
+    <form class="form" id="newCalForm">
+      <label for="scName">Nom du calendrier *</label>
+      <input id="scName" maxlength="60" placeholder="Ex. Famille, Colocation, Vacances d'été…" required>
+      <div class="mb">
+        <button class="btn ghost" id="scCancel" type="button">Annuler</button>
+        <button class="btn pri" id="scCreate" type="submit">Créer le calendrier</button>
+      </div>
+    </form>`, (el, close) => {
+    const inp = el.querySelector('#scName');
+    el.querySelector('#scCancel').onclick = close;
+    inp.focus();
+
+    el.querySelector('#newCalForm').onsubmit = async e => {
+      e.preventDefault();
+      const name = inp.value.trim();
+      if (!name) return toast('Indiquez un nom pour le calendrier', true);
+
+      await runAction(el.querySelector('#scCreate'), 'Création…', async () => {
+        const created = await safeMutate(async () => ok(
+          await db.from('shared_calendars')
+            .insert({ name, created_by: ME.id })
+            .select('id, name')
+            .single()
+        ), 'La création du calendrier partagé');
+
+        CAL_SPACE = 'shared';
+        CAL_SHARED_ID = created.id;
+        toast(`Calendrier « ${created.name} » créé`);
+        close();
+        await viewCalendar();
+      });
+    };
+  });
+}
+
+function openRenameSharedCalendarModal(cal) {
+  openModal(`
+    <h2>Renommer le calendrier</h2>
+    <form class="form" id="renCalForm">
+      <label for="scRenName">Nouveau nom *</label>
+      <input id="scRenName" maxlength="60" value="${esc(cal.name)}" required>
+      <div class="mb">
+        <button class="btn ghost" id="scRenCancel" type="button">Annuler</button>
+        <button class="btn pri" id="scRenSave" type="submit">Enregistrer</button>
+      </div>
+    </form>`, (el, close) => {
+    const inp = el.querySelector('#scRenName');
+    el.querySelector('#scRenCancel').onclick = close;
+    inp.focus();
+    inp.select();
+
+    el.querySelector('#renCalForm').onsubmit = async e => {
+      e.preventDefault();
+      const name = inp.value.trim();
+      if (!name) return toast('Le nom ne peut pas être vide', true);
+
+      await runAction(el.querySelector('#scRenSave'), 'Enregistrement…', async () => {
+        await safeMutate(async () => ok(
+          await db.from('shared_calendars')
+            .update({ name, updated_at: new Date().toISOString() })
+            .eq('id', cal.id)
+        ), 'Le renommage du calendrier');
+
+        toast('Nom du calendrier mis à jour');
+        close();
+        await viewCalendar();
+      });
+    };
+  });
+}
+
+function confirmDeleteMeal(meal, onDeleted) {
+  const isShared = CAL_SPACE === 'shared';
+  const table = isShared ? 'shared_calendar_meals' : 'personal_meals';
   confirmDialog({
     title: 'Supprimer ce repas ?',
     name: `${MEAL_TYPE_LABEL[meal.meal_type] || meal.meal_type} — ${meal.recipe_title}`,
-    text: `Ce repas prévu le ${parseIso(meal.meal_date).toLocaleDateString('fr-FR')} sera retiré de votre calendrier personnel.`,
+    text: `Ce repas prévu le ${parseIso(meal.meal_date).toLocaleDateString('fr-FR')} sera retiré du calendrier.`,
     confirmLabel: 'Supprimer',
     onConfirm: async () => {
       await safeMutate(async () => {
-        ok(await db.from('personal_meals').delete().eq('id', meal.id).eq('user_id', ME.id));
+        let q = db.from(table).delete().eq('id', meal.id);
+        if (!isShared) q = q.eq('user_id', ME.id);
+        ok(await q);
       }, 'La suppression du repas');
       toast('Repas supprimé');
       if (onDeleted) onDeleted();
@@ -2232,7 +2466,9 @@ function confirmDeletePersonalMeal(meal, onDeleted) {
   });
 }
 
-function openMovePersonalMealModal(meal) {
+function openMoveMealModal(meal) {
+  const isShared = CAL_SPACE === 'shared';
+  const table = isShared ? 'shared_calendar_meals' : 'personal_meals';
   const baseDate = parseIso(meal.meal_date);
   const plus1 = calIso(addDays(baseDate, 1));
   const plus2 = calIso(addDays(baseDate, 2));
@@ -2265,10 +2501,11 @@ function openMovePersonalMealModal(meal) {
       if (!nextDate) return toast('Choisissez une date valide', true);
       await runAction(el.querySelector('#mvSave'), 'Déplacement…', async () => {
         await safeMutate(async () => {
-          ok(await db.from('personal_meals')
+          let q = db.from(table)
             .update({ meal_date: nextDate, updated_at: new Date().toISOString() })
-            .eq('id', meal.id)
-            .eq('user_id', ME.id));
+            .eq('id', meal.id);
+          if (!isShared) q = q.eq('user_id', ME.id);
+          ok(await q);
         }, 'Le déplacement du repas');
         CAL_SELECTED = nextDate;
         CAL_CURSOR = parseIso(nextDate);
@@ -2280,7 +2517,7 @@ function openMovePersonalMealModal(meal) {
   });
 }
 
-async function openPersonalMealModal(dateIso, existingMeal = null) {
+async function openMealModal(dateIso, existingMeal = null) {
   let recipes = [];
   try {
     recipes = await ensureMyCalRecipes();
@@ -2289,6 +2526,10 @@ async function openPersonalMealModal(dateIso, existingMeal = null) {
     return;
   }
 
+  const isShared = CAL_SPACE === 'shared';
+  const activeShared = isShared ? SHARED_CALS.find(c => c.id === CAL_SHARED_ID) : null;
+  if (isShared && !activeShared) return;
+
   let selType = existingMeal?.meal_type || 'dejeuner';
   let selRecipeId = existingMeal?.recipe_id || '';
   let customTitle = !existingMeal?.recipe_id && existingMeal?.recipe_title ? existingMeal.recipe_title : '';
@@ -2296,6 +2537,7 @@ async function openPersonalMealModal(dateIso, existingMeal = null) {
 
   openModal(`
     <h2>${existingMeal ? 'Modifier le repas' : 'Planifier un repas'}</h2>
+    ${isShared ? `<p class="muted" style="margin:-4px 0 10px;font-size:.88rem">Calendrier partagé : <b>${esc(activeShared.name)}</b></p>` : ''}
     ${existingMeal?.recipe_id ? `
       <div class="prov" style="margin:10px 0 6px">
         <span>Recette associée : <b>${esc(existingMeal.recipe_title)}</b></span>
@@ -2336,7 +2578,7 @@ async function openPersonalMealModal(dateIso, existingMeal = null) {
     el.querySelector('#pmCancel').onclick = close;
     const delBtn = el.querySelector('#pmDel');
     if (delBtn && existingMeal) {
-      delBtn.onclick = () => confirmDeletePersonalMeal(existingMeal, close);
+      delBtn.onclick = () => confirmDeleteMeal(existingMeal, close);
     }
 
     const typesBox = el.querySelector('#pmTypes');
@@ -2409,8 +2651,7 @@ async function openPersonalMealModal(dateIso, existingMeal = null) {
       if (!mealDate) return toast('Veuillez choisir une date', true);
       if (!finalTitle) return toast('Sélectionnez une recette ou saisissez un intitulé', true);
 
-      const payload = {
-        user_id: ME.id,
+      const basePayload = {
         meal_date: mealDate,
         meal_type: selType,
         recipe_id: chosenRec ? chosenRec.id : null,
@@ -2422,10 +2663,23 @@ async function openPersonalMealModal(dateIso, existingMeal = null) {
 
       await runAction(el.querySelector('#pmSave'), 'Enregistrement…', async () => {
         await safeMutate(async () => {
-          if (existingMeal) {
-            ok(await db.from('personal_meals').update(payload).eq('id', existingMeal.id).eq('user_id', ME.id));
+          if (isShared) {
+            if (existingMeal) {
+              ok(await db.from('shared_calendar_meals').update(basePayload).eq('id', existingMeal.id));
+            } else {
+              ok(await db.from('shared_calendar_meals').insert({
+                ...basePayload,
+                calendar_id: activeShared.id,
+                created_by: ME.id,
+                for_everyone: true
+              }));
+            }
           } else {
-            ok(await db.from('personal_meals').insert(payload));
+            if (existingMeal) {
+              ok(await db.from('personal_meals').update(basePayload).eq('id', existingMeal.id).eq('user_id', ME.id));
+            } else {
+              ok(await db.from('personal_meals').insert({ ...basePayload, user_id: ME.id }));
+            }
           }
         }, 'L’enregistrement du repas');
 
