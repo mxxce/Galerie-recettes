@@ -138,17 +138,7 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,a:focus-visible{outli
 .sc-role{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(36,48,32,.09);color:inherit}
 .sc-chip.on .sc-role{background:rgba(255,255,255,.2)}
 .sc-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.m-assign-wrap{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;vertical-align:middle;margin-left:4px}
-.m-assign{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:#EEF2E4;color:var(--ink)}
-.m-assign.person{background:#FAF4E6;border:1px solid #E9D6A6;color:#6E4E0B;padding:1px 8px 1px 3px}
-.m-assign .av.xs{width:18px;height:18px;font-size:.62rem}
-.cal-pill-who{flex:none;font-size:.68rem;font-weight:700;padding:1px 6px;border-radius:99px;background:#fff;border:1px solid var(--line);color:var(--mute);max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cal-pill-who.person{background:#FAF4E6;border-color:#E9D6A6;color:#6E4E0B}
-.pm-assign-box{background:#FAFBF6;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;margin-top:6px}
-.pm-assign-chips{display:flex;gap:7px;flex-wrap:wrap}
-.pm-who-btn{font:inherit;font-size:.86rem;font-weight:600;padding:7px 12px;border-radius:99px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
-.pm-who-btn.on{border-color:var(--accent);background:#FBE8EB;color:var(--accent)}
-.pm-who-btn .av.xs{width:20px;height:20px;font-size:.66rem}
+.m-assign{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:
 .inv-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--accent);color:#fff;font-size:.74rem;font-weight:700;margin-left:6px}
 .tab.on .inv-badge{background:#fff;color:var(--ink)}
 .inv-box{background:#FAF4E6;border:1.5px solid #E9D6A6;border-radius:18px;padding:14px 16px;margin-bottom:16px}
@@ -1993,7 +1983,6 @@ const startOfWeek = d => { const day = (d.getDay() + 6) % 7; return addDays(d, -
 let CAL_SPACE = 'personal'; // 'personal' | 'shared'
 let SHARED_CALS = [];
 let PENDING_INVITES = [];
-let ACTIVE_CAL_MEMBERS = [];
 let CAL_SHARED_ID = '';
 let CAL_VIEW = 'month'; // 'month' | 'week' | 'list'
 let CAL_CURSOR = new Date();
@@ -2093,69 +2082,13 @@ async function loadPendingInvitations() {
   }));
 }
 
-async function loadActiveCalendarMembers(calendarId) {
-  if (!calendarId) { ACTIVE_CAL_MEMBERS = []; return; }
-  const rows = ok(await withTimeout(
-    db.from('shared_calendar_members')
-      .select('user_id, role, can_edit_meals, joined_at')
-      .eq('calendar_id', calendarId)
-      .order('joined_at', { ascending: true }),
-    10000
-  )) || [];
-
-  const uids = [...new Set(rows.map(r => r.user_id))];
-  let profMap = {};
-  if (uids.length) {
-    const pRows = ok(await withTimeout(
-      db.from('profiles').select('id, pseudo, avatar_url').in('id', uids),
-      10000
-    )) || [];
-    pRows.forEach(p => { profMap[p.id] = p; });
-  }
-
-  ACTIVE_CAL_MEMBERS = rows.map(r => ({
-    user_id: r.user_id,
-    role: r.role,
-    can_edit_meals: r.can_edit_meals,
-    pseudo: profMap[r.user_id]?.pseudo || 'Membre',
-    avatar_url: profMap[r.user_id]?.avatar_url || null
-  }));
-}
-
-function mealAssignBadgesHtml(m) {
-  if (m.for_everyone !== false) {
-    return `<span class="m-assign-wrap"><span class="m-assign">Tout le monde</span></span>`;
-  }
-  const ids = m.assignee_ids || [];
-  if (!ids.length) {
-    return `<span class="m-assign-wrap"><span class="m-assign person">Attribution spécifique</span></span>`;
-  }
-  const badges = ids.map(uid => {
-    const mem = ACTIVE_CAL_MEMBERS.find(x => x.user_id === uid) || { id: uid, pseudo: 'Membre' };
-    return `<span class="m-assign person">${avatarHtml({ id: uid, pseudo: mem.pseudo, avatar_url: mem.avatar_url }, 'xs')} @${esc(mem.pseudo)}</span>`;
-  }).join('');
-  return `<span class="m-assign-wrap">${badges}</span>`;
-}
-
-function mealPillWhoHtml(m) {
-  if (m.for_everyone !== false) {
-    return `<span class="cal-pill-who" title="Pour tout le monde">Tous</span>`;
-  }
-  const ids = m.assignee_ids || [];
-  if (!ids.length) return '';
-  const names = ids.map(uid => {
-    const mem = ACTIVE_CAL_MEMBERS.find(x => x.user_id === uid);
-    return mem ? `@${mem.pseudo}` : 'Membre';
-  });
-  const shortTxt = names.length === 1 ? names[0] : `${names[0]} +${names.length - 1}`;
-  return `<span class="cal-pill-who person" title="${esc(names.join(', '))}">${esc(shortTxt)}</span>`;
-}
-
 function mealCardHtml(m, { isShared = false, canEdit = true } = {}) {
   const titleHtml = m.recipe_id
     ? `<a class="cal-card-title" href="#/recette/${m.recipe_id}">${esc(m.recipe_title)}</a>`
     : `<span class="cal-card-title">${esc(m.recipe_title)}</span>`;
-  const assignBadge = isShared ? mealAssignBadgesHtml(m) : '';
+  const assignBadge = isShared
+    ? `<span class="m-assign">${m.for_everyone !== false ? 'Tout le monde' : 'Personnalisé'}</span>`
+    : '';
   return `<div class="cal-card" data-meal="${m.id}">
     ${m.recipe_cover_url
       ? `<img class="cal-card-thumb" src="${esc(m.recipe_cover_url)}" alt="" loading="lazy">`
@@ -2181,7 +2114,7 @@ async function loadMealsRange(startIso, endIso) {
     if (!CAL_SHARED_ID) { CAL_MEALS = []; return; }
     const rows = ok(await withTimeout(
       db.from('shared_calendar_meals')
-        .select('*, shared_calendar_meal_assignees(user_id)')
+        .select('*')
         .eq('calendar_id', CAL_SHARED_ID)
         .gte('meal_date', startIso)
         .lte('meal_date', endIso)
@@ -2189,11 +2122,21 @@ async function loadMealsRange(startIso, endIso) {
       15000,
       'Le chargement des repas partagés'
     ));
-    CAL_MEALS = (rows || []).map(r => ({
-      ...r,
-      assignee_ids: (r.shared_calendar_meal_assignees || []).map(a => a.user_id)
-    }));
+    CAL_MEALS = rows || [];
   } else {
+    const rows = ok(await withTimeout(
+      db.from('personal_meals')
+        .select('*')
+        .eq('user_id', ME.id)
+        .gte('meal_date', startIso)
+        .lte('meal_date', endIso)
+        .order('meal_date', { ascending: true }),
+      15000,
+      'Le chargement du calendrier'
+    ));
+    CAL_MEALS = rows || [];
+  }
+}
 
 async function viewCalendar() {
   if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
@@ -2204,9 +2147,6 @@ async function viewCalendar() {
   if (CAL_SPACE === 'shared') {
     await loadSharedCalendars();
     activeShared = SHARED_CALS.find(c => c.id === CAL_SHARED_ID) || null;
-    await loadActiveCalendarMembers(activeShared?.id || '');
-  } else {
-    ACTIVE_CAL_MEMBERS = [];
   }
 
   const isShared = CAL_SPACE === 'shared';
@@ -2325,7 +2265,6 @@ async function viewCalendar() {
                 ${dayMeals.map(x => `<div class="cal-pill-meal" data-open-meal="${x.id}" title="${esc(MEAL_TYPE_LABEL[x.meal_type] + ' : ' + x.recipe_title)}">
                   ${x.recipe_cover_url ? `<img src="${esc(x.recipe_cover_url)}" alt="">` : ''}
                   <span class="cal-pill-txt">${esc(x.recipe_title)}</span>
-                  ${isShared ? mealPillWhoHtml(x) : ''}
                 </div>`).join('')}
               </div>
             </div>`;
@@ -2953,8 +2892,6 @@ async function openMealModal(dateIso, existingMeal = null) {
   let selRecipeId = existingMeal?.recipe_id || '';
   let customTitle = !existingMeal?.recipe_id && existingMeal?.recipe_title ? existingMeal.recipe_title : '';
   let searchQ = '';
-  let forEveryone = existingMeal ? existingMeal.for_everyone !== false : true;
-  let selectedAssignees = new Set(!forEveryone ? (existingMeal?.assignee_ids || []) : []);
 
   openModal(`
     <h2>${existingMeal ? 'Modifier le repas' : 'Planifier un repas'}</h2>
@@ -2972,22 +2909,6 @@ async function openMealModal(dateIso, existingMeal = null) {
       <div class="pm-types" id="pmTypes">
         ${MEAL_TYPES.map(([k, l]) => `<button type="button" class="pm-type-btn ${selType === k ? 'on' : ''}" data-pmt="${k}">${esc(l)}</button>`).join('')}
       </div>
-
-      ${isShared ? `
-        <label>Pour qui ? *</label>
-        <div class="pm-assign-box">
-          <div class="pm-assign-chips" id="pmAssignChips">
-            <button type="button" class="pm-who-btn ${forEveryone ? 'on' : ''}" data-who-all="1">Tout le monde</button>
-            ${ACTIVE_CAL_MEMBERS.map(mem => `
-              <button type="button" class="pm-who-btn ${!forEveryone && selectedAssignees.has(mem.user_id) ? 'on' : ''}" data-who-uid="${mem.user_id}">
-                ${avatarHtml({ id: mem.user_id, pseudo: mem.pseudo, avatar_url: mem.avatar_url }, 'xs')}
-                <span>@${esc(mem.pseudo)}</span>
-              </button>`).join('')}
-          </div>
-          <div class="muted" id="pmAssignHint" style="font-size:.8rem;margin-top:7px">
-            ${forEveryone ? 'Tous les membres du calendrier sont concernés.' : `${selectedAssignees.size} personne${selectedAssignees.size > 1 ? 's' : ''} sélectionnée${selectedAssignees.size > 1 ? 's' : ''}.`}
-          </div>
-        </div>` : ''}
 
       <label for="pmSearch">Choisir une recette de ma bibliothèque *</label>
       <input id="pmSearch" type="search" placeholder="Rechercher par nom ou catégorie…" autocomplete="off">
@@ -3025,43 +2946,6 @@ async function openMealModal(dateIso, existingMeal = null) {
       selType = b.dataset.pmt;
       typesBox.querySelectorAll('.pm-type-btn').forEach(x => x.classList.toggle('on', x.dataset.pmt === selType));
     };
-
-    const assignBox = el.querySelector('#pmAssignChips');
-    const assignHint = el.querySelector('#pmAssignHint');
-    if (assignBox) {
-      const syncAssignUI = () => {
-        const allBtn = assignBox.querySelector('[data-who-all]');
-        if (allBtn) allBtn.classList.toggle('on', forEveryone);
-        assignBox.querySelectorAll('[data-who-uid]').forEach(b => {
-          b.classList.toggle('on', !forEveryone && selectedAssignees.has(b.dataset.whoUid));
-        });
-        if (assignHint) {
-          assignHint.textContent = forEveryone
-            ? 'Tous les membres du calendrier sont concernés.'
-            : (selectedAssignees.size
-                ? `${selectedAssignees.size} personne${selectedAssignees.size > 1 ? 's' : ''} sélectionnée${selectedAssignees.size > 1 ? 's' : ''}.`
-                : 'Sélectionnez au moins un membre ou choisissez « Tout le monde ».');
-        }
-      };
-
-      assignBox.onclick = e => {
-        const allBtn = e.target.closest('[data-who-all]');
-        if (allBtn) {
-          forEveryone = true;
-          selectedAssignees.clear();
-          syncAssignUI();
-          return;
-        }
-        const uidBtn = e.target.closest('[data-who-uid]');
-        if (uidBtn) {
-          const uid = uidBtn.dataset.whoUid;
-          forEveryone = false;
-          if (selectedAssignees.has(uid)) selectedAssignees.delete(uid);
-          else selectedAssignees.add(uid);
-          syncAssignUI();
-        }
-      };
-    }
 
     const customInp = el.querySelector('#pmCustom');
     customInp.oninput = e => {
@@ -3124,11 +3008,7 @@ async function openMealModal(dateIso, existingMeal = null) {
 
       if (!mealDate) return toast('Veuillez choisir une date', true);
       if (!finalTitle) return toast('Sélectionnez une recette ou saisissez un intitulé', true);
-      if (isShared && !forEveryone && selectedAssignees.size === 0) {
-        return toast('Choisissez « Tout le monde » ou sélectionnez au moins une personne', true);
-      }
 
-      const assigneeIds = forEveryone ? [] : [...selectedAssignees];
       const basePayload = {
         meal_date: mealDate,
         meal_type: selType,
@@ -3142,30 +3022,15 @@ async function openMealModal(dateIso, existingMeal = null) {
       await runAction(el.querySelector('#pmSave'), 'Enregistrement…', async () => {
         await safeMutate(async () => {
           if (isShared) {
-            let mealId = existingMeal?.id;
-            if (mealId) {
-              ok(await db.from('shared_calendar_meals')
-                .update({ ...basePayload, for_everyone: forEveryone })
-                .eq('id', mealId));
-              ok(await db.from('shared_calendar_meal_assignees')
-                .delete()
-                .eq('meal_id', mealId));
+            if (existingMeal) {
+              ok(await db.from('shared_calendar_meals').update(basePayload).eq('id', existingMeal.id));
             } else {
-              const inserted = ok(await db.from('shared_calendar_meals')
-                .insert({
-                  ...basePayload,
-                  calendar_id: activeShared.id,
-                  created_by: ME.id,
-                  for_everyone: forEveryone
-                })
-                .select('id')
-                .single());
-              mealId = inserted.id;
-            }
-
-            if (!forEveryone && assigneeIds.length) {
-              ok(await db.from('shared_calendar_meal_assignees')
-                .insert(assigneeIds.map(uid => ({ meal_id: mealId, user_id: uid }))));
+              ok(await db.from('shared_calendar_meals').insert({
+                ...basePayload,
+                calendar_id: activeShared.id,
+                created_by: ME.id,
+                for_everyone: true
+              }));
             }
           } else {
             if (existingMeal) {
