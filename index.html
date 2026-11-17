@@ -2613,13 +2613,15 @@ async function viewCalendar() {
         viewCalendar();
       }
     };
-    if ($('#calEmptyReset')) {
-      $('#calEmptyReset').onclick = () => {
-        CAL_FILTER_TYPE = '';
-        CAL_FILTER_WHO = '';
-        viewCalendar();
-      };
-    }
+  }
+
+  if ($('#calEmptyReset')) {
+    $('#calEmptyReset').onclick = () => {
+      CAL_FILTER_TYPE = '';
+      CAL_FILTER_WHO = '';
+      viewCalendar();
+    };
+  }
 
   app.onclick = e => {
     const addBtn = e.target.closest('[data-add-day]');
