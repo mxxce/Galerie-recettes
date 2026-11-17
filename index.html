@@ -489,6 +489,440 @@ main, #app {
     font-size: 1rem;
   }
 }
+
+/* ============ Refonte ergonomique ajout d'ingrédients sur mobile ============ */
+#ingMobileWrap {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  #ingDesktopWrap {
+    display: none !important;
+  }
+  #ingMobileWrap {
+    display: block;
+  }
+  #live.nut {
+    grid-template-columns: auto repeat(4, minmax(52px, 1fr));
+    gap: 6px 8px;
+    font-size: .84rem;
+  }
+  .ming-composer {
+    background: #FAFBF6;
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 16px;
+    transition: background .15s, border-color .15s;
+  }
+  .ming-composer.editing {
+    background: #FAF4E6;
+    border-color: var(--accent2);
+  }
+  .ming-comp-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .ming-comp-title {
+    font-weight: 700;
+    font-size: .98rem;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+  .ming-edit-badge {
+    font-size: .72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--accent2);
+    color: var(--ink);
+  }
+  .ming-new-btn {
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 700;
+    padding: 6px 11px;
+    border-radius: 99px;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 34px;
+  }
+  .ming-step-lbl {
+    display: block;
+    font-size: .76rem;
+    font-weight: 700;
+    color: var(--mute);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    margin-bottom: 6px;
+  }
+  .ming-search-box {
+    position: relative;
+  }
+  .ming-search-box input {
+    padding-right: 38px;
+    background: #fff;
+    min-height: 46px;
+  }
+  .ming-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    border-radius: 99px;
+    border: 0;
+    background: var(--bg);
+    color: var(--mute);
+    font-weight: 700;
+    font-size: 1rem;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+  .ming-cats {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 8px 0 2px;
+  }
+  .ming-cats::-webkit-scrollbar {
+    display: none;
+  }
+  .ming-cat {
+    flex: none;
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 99px;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .ming-cat.on {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .ming-results {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 215px;
+    overflow-y: auto;
+    margin-top: 8px;
+    padding-right: 2px;
+  }
+  .ming-res-item {
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    background: #fff;
+    border: 1.5px solid var(--line);
+    border-radius: 13px;
+    padding: 9px 12px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .ming-res-item:active {
+    border-color: var(--accent);
+    background: #FFF8F8;
+  }
+  .ming-res-main {
+    min-width: 0;
+    flex: 1;
+  }
+  .ming-res-name {
+    font-weight: 700;
+    font-size: .94rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .ming-res-cat {
+    font-size: .75rem;
+    color: var(--mute);
+    margin-top: 1px;
+  }
+  .ming-unit-tag {
+    flex: none;
+    font-size: .75rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 99px;
+    background: var(--bg);
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .ming-picked {
+    background: #fff;
+    border: 1.5px solid var(--ink);
+    border-radius: 14px;
+    padding: 11px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ming-picked-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .ming-picked-name {
+    font-weight: 700;
+    font-size: 1.02rem;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .ming-change-btn {
+    flex: none;
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 99px;
+    border: 1.5px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 34px;
+    cursor: pointer;
+  }
+  .ming-picked-ref {
+    font-size: .82rem;
+    color: var(--mute);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .ming-qty-block {
+    margin-top: 12px;
+  }
+  .ming-qty-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .ming-qty-row input {
+    min-height: 48px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    background: #fff;
+  }
+  .ming-unit-box {
+    min-width: 84px;
+    padding: 0 14px;
+    border-radius: 14px;
+    background: #EEF2E4;
+    border: 1.5px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: .92rem;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .ming-unit-box.empty {
+    background: #fff;
+    color: var(--mute);
+    font-weight: 500;
+  }
+  .ming-qchips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .ming-qchip {
+    font: inherit;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: 5px 11px;
+    border-radius: 99px;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    min-height: 34px;
+    cursor: pointer;
+  }
+  .ming-qchip.on {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .ming-preview {
+    margin-top: 8px;
+    font-size: .83rem;
+    color: var(--mute);
+    min-height: 19px;
+  }
+  .ming-preview b {
+    color: var(--ink);
+  }
+  .ming-comp-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .ming-comp-actions .btn.pri {
+    flex: 1;
+    min-height: 48px;
+    font-size: .98rem;
+  }
+  .ming-comp-actions .btn.ghost {
+    min-height: 48px;
+    padding: 0 15px;
+  }
+  .ming-added {
+    margin-top: 4px;
+  }
+  .ming-added-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .ming-added-title {
+    font-weight: 700;
+    font-size: .96rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ming-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 99px;
+    background: var(--ink);
+    color: #fff;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+  .ming-added-kcal {
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--mute);
+  }
+  .ming-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ming-card {
+    background: #fff;
+    border: 1.5px solid var(--line);
+    border-radius: 15px;
+    padding: 10px 11px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ming-card.editing {
+    border-color: var(--accent2);
+    background: #FFFDF7;
+    box-shadow: 0 0 0 2px rgba(233, 169, 58, .22);
+  }
+  .ming-card-num {
+    width: 25px;
+    height: 25px;
+    border-radius: 99px;
+    background: var(--bg);
+    color: var(--mute);
+    font-size: .76rem;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+  .ming-card-body {
+    min-width: 0;
+    flex: 1;
+  }
+  .ming-card-name {
+    font-weight: 700;
+    font-size: .96rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+  .ming-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .ming-qty-badge {
+    display: inline-block;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 99px;
+    background: #FAF4E6;
+    border: 1px solid #E9D6A6;
+    color: #6E4E0B;
+  }
+  .ming-kcal-tag {
+    font-size: .78rem;
+    color: var(--mute);
+  }
+  .ming-card-acts {
+    display: flex;
+    gap: 6px;
+    flex: none;
+  }
+  .ming-act {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    font-size: .98rem;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+  .ming-act.del {
+    border-color: #F3C6CB;
+    background: #FBE8EB;
+    color: var(--accent);
+  }
+  .ming-empty {
+    background: #FAFBF6;
+    border: 1.5px dashed var(--line);
+    border-radius: 15px;
+    padding: 16px 14px;
+    text-align: center;
+    color: var(--mute);
+    font-size: .88rem;
+    line-height: 1.45;
+  }
+}
 </style>
 </head>
 <body>
@@ -1925,14 +2359,17 @@ async function viewForm(id) {
       <div><label for="serv">Portions *</label><input id="serv" inputmode="numeric" value="${esc(F.servings)}"></div>
     </div>
     <label>Ingrédients *</label>
-    <div class="two" style="margin-bottom:10px">
-      <input id="ingFilterQ" placeholder="Rechercher un ingrédient (ex. carotte, poulet, crème…)" aria-label="Rechercher un ingrédient">
-      <select id="ingFilterCat" aria-label="Filtrer par catégorie d'ingrédient">
-        <option value="">Toutes les catégories (${ING.length})</option>
-        ${ingCats.map(c => `<option value="${esc(c)}">${esc(c)} (${ING.filter(i => i.category === c).length})</option>`).join('')}
-      </select>
+    <div id="ingDesktopWrap">
+      <div class="two" style="margin-bottom:10px">
+        <input id="ingFilterQ" placeholder="Rechercher un ingrédient (ex. carotte, poulet, crème…)" aria-label="Rechercher un ingrédient">
+        <select id="ingFilterCat" aria-label="Filtrer par catégorie d'ingrédient">
+          <option value="">Toutes les catégories (${ING.length})</option>
+          ${ingCats.map(c => `<option value="${esc(c)}">${esc(c)} (${ING.filter(i => i.category === c).length})</option>`).join('')}
+        </select>
+      </div>
+      <div id="rows"></div><button class="btn ghost" id="addRow" type="button">Ajouter un ingrédient</button>
     </div>
-    <div id="rows"></div><button class="btn ghost" id="addRow" type="button">Ajouter un ingrédient</button>
+    <div id="ingMobileWrap"></div>
     <div id="live" class="nut" style="margin-top:18px"></div>
     <label for="steps">Préparation</label><textarea id="steps" rows="6"></textarea>
     <label for="notes">Notes personnelles <small class="muted" style="font-weight:400">(strictement privées, jamais partagées)</small></label><textarea id="notes" rows="3"></textarea>
@@ -1958,7 +2395,7 @@ async function viewForm(id) {
       $('#steps').value = F.steps || '';
       $('#notes').value = F.notes || '';
       if (!Array.isArray(F.rows) || !F.rows.length) F.rows = [{ ingredient_id: '', quantity: '' }];
-      drawRows(); live();
+      syncAllIngViews();
       $('#draftBanner').remove();
       toast('Brouillon restauré');
     };
@@ -1967,6 +2404,391 @@ async function viewForm(id) {
       $('#draftBanner').remove();
     };
   }
+
+  /* ---- Logique mobile dédiée pour l'ajout et la gestion des ingrédients ---- */
+  let mSelIngId = '';
+  let mQty = '';
+  let mSearchQ = '';
+  let mCatFilter = '';
+  let mEditIdx = null;
+  let mShownLimit = 40;
+
+  const syncAllIngViews = () => {
+    drawRows();
+    renderMobileIng();
+    live();
+  };
+
+  window.__commitPendingMobileIng = () => {
+    const wrap = $('#ingMobileWrap');
+    if (!wrap || wrap.offsetParent === null) return;
+    const qVal = num(mQty);
+    if (!mSelIngId || qVal <= 0) return;
+    if (mEditIdx !== null && F.rows[mEditIdx]) {
+      F.rows[mEditIdx] = { ingredient_id: mSelIngId, quantity: qVal };
+    } else if (F.rows.length === 1 && !F.rows[0].ingredient_id && !F.rows[0].quantity) {
+      F.rows[0] = { ingredient_id: mSelIngId, quantity: qVal };
+    } else {
+      F.rows.push({ ingredient_id: mSelIngId, quantity: qVal });
+    }
+    mSelIngId = '';
+    mQty = '';
+    mSearchQ = '';
+    mEditIdx = null;
+    mShownLimit = 40;
+    syncAllIngViews();
+  };
+
+  const resetMobileComposer = () => {
+    mSelIngId = '';
+    mQty = '';
+    mSearchQ = '';
+    mEditIdx = null;
+    mShownLimit = 40;
+    renderMobileIng();
+  };
+
+  const renderMobileIng = () => {
+    const wrap = $('#ingMobileWrap');
+    if (!wrap) return;
+
+    const selIng = mSelIngId ? ING.find(x => x.id === mSelIngId) : null;
+    const allIngCats = [...new Set(ING.map(i => i.category).filter(Boolean))];
+    if (mCatFilter && !allIngCats.includes(mCatFilter)) mCatFilter = '';
+
+    const qNorm = norm(mSearchQ);
+    const matchingIngs = ING.filter(i => {
+      if (mCatFilter && i.category !== mCatFilter) return false;
+      if (qNorm && !norm(i.name).includes(qNorm)) return false;
+      return true;
+    });
+
+    const quickSteps = selIng
+      ? (selIng.unit === 'piece' ? [1, 2, 3, 4, 5, 6] : [50, 100, 150, 200, 250, 500])
+      : [50, 100, 200, 250];
+
+    const previewHtml = (() => {
+      const qVal = num(mQty);
+      if (!selIng) return 'Sélectionnez d’abord un ingrédient ci-dessus.';
+      if (qVal <= 0) return `Saisissez une quantité en <b>${esc(sfx(selIng))}</b>.`;
+      const factor = selIng.unit === 'piece' ? qVal : qVal / 100;
+      const kcalEst = fmt((selIng.kcal || 0) * factor);
+      return `Aperçu : <b>${esc(qtyLabel(selIng, qVal))}</b> • ${kcalEst} kcal`;
+    })();
+
+    const addedEntries = F.rows
+      .map((row, idx) => ({ row, idx, ing: ING.find(x => x.id === row.ingredient_id) }))
+      .filter(x => x.row.ingredient_id);
+
+    const totalKcal = addedEntries.reduce((acc, x) => {
+      if (!x.ing) return acc;
+      const f = x.ing.unit === 'piece' ? num(x.row.quantity) : num(x.row.quantity) / 100;
+      return acc + (x.ing.kcal || 0) * f;
+    }, 0);
+
+    wrap.innerHTML = `
+      <div class="ming-composer ${mEditIdx !== null ? 'editing' : ''}" id="mingComposer">
+        <div class="ming-comp-head">
+          <div class="ming-comp-title">
+            <span>${mEditIdx !== null ? 'Modifier l’ingrédient' : 'Ajouter un ingrédient'}</span>
+            ${mEditIdx !== null ? `<span class="ming-edit-badge">N° ${mEditIdx + 1}</span>` : ''}
+          </div>
+          <button type="button" class="ming-new-btn" id="mOpenNewIng">+ Nouvel ingrédient</button>
+        </div>
+
+        <span class="ming-step-lbl">1. Choisir l’ingrédient</span>
+        ${selIng ? `
+          <div class="ming-picked">
+            <div class="ming-picked-top">
+              <div class="ming-picked-name">${esc(selIng.name)}</div>
+              <button type="button" class="ming-change-btn" id="mIngChangeBtn">Changer</button>
+            </div>
+            <div class="ming-picked-ref">
+              <span>Unité de référence : <b>${selIng.unit === 'piece' ? 'unité / pièce' : selIng.unit}</b></span>
+              <span>•</span>
+              <span>${esc(refText(selIng))} = ${fmt(selIng.kcal)} kcal</span>
+            </div>
+          </div>
+        ` : `
+          <div class="ming-search-box">
+            <input id="mIngSearch" type="search" value="${esc(mSearchQ)}" placeholder="Rechercher (ex. aubergine, farine, œuf…)" autocomplete="off" aria-label="Rechercher un ingrédient">
+            ${mSearchQ ? `<button type="button" class="ming-clear" id="mIngSearchClear" aria-label="Effacer la recherche">✕</button>` : ''}
+          </div>
+          ${allIngCats.length ? `
+            <div class="ming-cats" id="mIngCats">
+              <button type="button" class="ming-cat ${mCatFilter === '' ? 'on' : ''}" data-mcat="">Toutes (${ING.length})</button>
+              ${allIngCats.map(c => `<button type="button" class="ming-cat ${mCatFilter === c ? 'on' : ''}" data-mcat="${esc(c)}">${esc(c)}</button>`).join('')}
+            </div>` : ''}
+          <div class="ming-results" id="mIngResults">
+            ${matchingIngs.length ? (
+              matchingIngs.slice(0, mShownLimit).map(i => `
+                <button type="button" class="ming-res-item" data-mpick="${i.id}">
+                  <div class="ming-res-main">
+                    <div class="ming-res-name">${esc(i.name)}</div>
+                    ${i.category ? `<div class="ming-res-cat">${esc(i.category)}</div>` : ''}
+                  </div>
+                  <span class="ming-unit-tag">${i.unit === 'piece' ? 'unité' : esc(i.unit)}</span>
+                </button>`).join('')
+              + (matchingIngs.length > mShownLimit
+                ? `<button type="button" class="btn ghost sm" id="mMoreRes" style="width:100%;margin-top:2px">Afficher plus (${matchingIngs.length - mShownLimit} restants)</button>`
+                : '')
+            ) : `
+              <div class="ming-empty" style="padding:12px">
+                Aucun ingrédient trouvé${mSearchQ ? ` pour « ${esc(mSearchQ)} »` : ''}.
+                <div style="margin-top:8px">
+                  <button type="button" class="btn pri sm" id="mCreateFromSearch">+ Créer ${mSearchQ.trim() ? `« ${esc(mSearchQ.trim())} »` : 'cet ingrédient'}</button>
+                </div>
+              </div>
+            `}
+          </div>
+        `}
+
+        <div class="ming-qty-block">
+          <span class="ming-step-lbl">2. Quantité & unité</span>
+          <div class="ming-qty-row">
+            <input id="mIngQty" inputmode="decimal" value="${esc(mQty)}" placeholder="${selIng?.unit === 'piece' ? 'Ex. 2' : 'Ex. 150'}" aria-label="Quantité">
+            <div class="ming-unit-box ${selIng ? '' : 'empty'}" id="mIngUnitBox">${selIng ? esc(sfx(selIng)) : 'Unité'}</div>
+          </div>
+          <div class="ming-qchips" id="mIngQuickChips">
+            ${quickSteps.map(v => `<button type="button" class="ming-qchip ${num(mQty) === v && mQty !== '' ? 'on' : ''}" data-mqty="${v}">${v}${selIng && selIng.unit !== 'piece' ? ' ' + esc(selIng.unit) : ''}</button>`).join('')}
+          </div>
+          <div class="ming-preview" id="mIngPreview">${previewHtml}</div>
+        </div>
+
+        <div class="ming-comp-actions">
+          ${mEditIdx !== null ? `<button type="button" class="btn ghost" id="mIngCancelEdit">Annuler</button>` : ''}
+          <button type="button" class="btn pri" id="mIngSubmitBtn">${mEditIdx !== null ? '✓ Enregistrer la modification' : '+ Ajouter à la recette'}</button>
+        </div>
+      </div>
+
+      <div class="ming-added">
+        <div class="ming-added-head">
+          <div class="ming-added-title">
+            <span>Ingrédients ajoutés</span>
+            <span class="ming-count">${addedEntries.length}</span>
+          </div>
+          ${addedEntries.length ? `<span class="ming-added-kcal">${fmt(totalKcal)} kcal</span>` : ''}
+        </div>
+        <div class="ming-list" id="mIngAddedList">
+          ${addedEntries.length ? addedEntries.map(({ row, idx, ing }, displayPos) => {
+            const qVal = num(row.quantity);
+            const factor = ing ? (ing.unit === 'piece' ? qVal : qVal / 100) : 0;
+            const itemKcal = ing ? fmt((ing.kcal || 0) * factor) : '0';
+            const qtyDisplay = ing ? qtyLabel(ing, qVal) : fmt(qVal);
+            return `<div class="ming-card ${mEditIdx === idx ? 'editing' : ''}">
+              <div class="ming-card-num">${displayPos + 1}</div>
+              <div class="ming-card-body">
+                <div class="ming-card-name">${esc(ing ? ing.name : 'Ingrédient introuvable')}</div>
+                <div class="ming-card-meta">
+                  <span class="ming-qty-badge">${esc(qtyDisplay)}</span>
+                  <span class="ming-kcal-tag">${itemKcal} kcal</span>
+                </div>
+              </div>
+              <div class="ming-card-acts">
+                <button type="button" class="ming-act" data-medit="${idx}" aria-label="Modifier ${esc(ing?.name || '')}" title="Modifier">✎</button>
+                <button type="button" class="ming-act del" data-mdel="${idx}" aria-label="Supprimer ${esc(ing?.name || '')}" title="Supprimer">✕</button>
+              </div>
+            </div>`;
+          }).join('') : `
+            <div class="ming-empty">
+              Aucun ingrédient ajouté pour le moment.<br>
+              Choisissez un ingrédient ci-dessus, indiquez sa quantité puis appuyez sur <b>+ Ajouter à la recette</b>.
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+
+    /* Événements du compositeur mobile */
+    const openCreateModal = (prefill = '') => {
+      openQuickCreateIngredientModal(prefill, async createdIng => {
+        await loadIng();
+        mSelIngId = createdIng.id;
+        mSearchQ = '';
+        syncAllIngViews();
+        const qInp = $('#mIngQty');
+        if (qInp) qInp.focus();
+      });
+    };
+
+    const newIngBtn = wrap.querySelector('#mOpenNewIng');
+    if (newIngBtn) newIngBtn.onclick = () => openCreateModal(mSearchQ.trim());
+
+    const createFromSearchBtn = wrap.querySelector('#mCreateFromSearch');
+    if (createFromSearchBtn) createFromSearchBtn.onclick = () => openCreateModal(mSearchQ.trim());
+
+    const changeBtn = wrap.querySelector('#mIngChangeBtn');
+    if (changeBtn) {
+      changeBtn.onclick = () => {
+        mSelIngId = '';
+        renderMobileIng();
+        const sInp = $('#mIngSearch');
+        if (sInp) sInp.focus();
+      };
+    }
+
+    const searchInp = wrap.querySelector('#mIngSearch');
+    if (searchInp) {
+      searchInp.oninput = e => {
+        const pos = e.target.selectionStart;
+        mSearchQ = e.target.value;
+        mShownLimit = 40;
+        renderMobileIng();
+        const nextInp = $('#mIngSearch');
+        if (nextInp) {
+          nextInp.focus();
+          try { nextInp.setSelectionRange(pos, pos); } catch (_) {}
+        }
+      };
+    }
+
+    const clearBtn = wrap.querySelector('#mIngSearchClear');
+    if (clearBtn) {
+      clearBtn.onclick = () => {
+        mSearchQ = '';
+        mShownLimit = 40;
+        renderMobileIng();
+        const sInp = $('#mIngSearch');
+        if (sInp) sInp.focus();
+      };
+    }
+
+    const catsRow = wrap.querySelector('#mIngCats');
+    if (catsRow) {
+      catsRow.onclick = e => {
+        const b = e.target.closest('[data-mcat]');
+        if (!b) return;
+        mCatFilter = b.dataset.mcat;
+        mShownLimit = 40;
+        renderMobileIng();
+      };
+    }
+
+    const resList = wrap.querySelector('#mIngResults');
+    if (resList) {
+      resList.onclick = e => {
+        const more = e.target.closest('#mMoreRes');
+        if (more) {
+          mShownLimit += 40;
+          renderMobileIng();
+          return;
+        }
+        const pick = e.target.closest('[data-mpick]');
+        if (!pick) return;
+        mSelIngId = pick.dataset.mpick;
+        renderMobileIng();
+        const qInp = $('#mIngQty');
+        if (qInp) qInp.focus();
+      };
+    }
+
+    const qtyInp = wrap.querySelector('#mIngQty');
+    if (qtyInp) {
+      qtyInp.oninput = e => {
+        mQty = e.target.value;
+        const prev = wrap.querySelector('#mIngPreview');
+        if (prev) {
+          const qVal = num(mQty);
+          if (!selIng) prev.innerHTML = 'Sélectionnez d’abord un ingrédient ci-dessus.';
+          else if (qVal <= 0) prev.innerHTML = `Saisissez une quantité en <b>${esc(sfx(selIng))}</b>.`;
+          else {
+            const factor = selIng.unit === 'piece' ? qVal : qVal / 100;
+            prev.innerHTML = `Aperçu : <b>${esc(qtyLabel(selIng, qVal))}</b> • ${fmt((selIng.kcal || 0) * factor)} kcal`;
+          }
+        }
+        wrap.querySelectorAll('.ming-qchip').forEach(c => {
+          c.classList.toggle('on', num(mQty) === Number(c.dataset.mqty) && mQty !== '');
+        });
+      };
+      qtyInp.onkeydown = e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          wrap.querySelector('#mIngSubmitBtn')?.click();
+        }
+      };
+    }
+
+    const qChips = wrap.querySelector('#mIngQuickChips');
+    if (qChips) {
+      qChips.onclick = e => {
+        const b = e.target.closest('[data-mqty]');
+        if (!b) return;
+        mQty = b.dataset.mqty;
+        renderMobileIng();
+      };
+    }
+
+    const cancelEditBtn = wrap.querySelector('#mIngCancelEdit');
+    if (cancelEditBtn) {
+      cancelEditBtn.onclick = () => resetMobileComposer();
+    }
+
+    const submitBtn = wrap.querySelector('#mIngSubmitBtn');
+    if (submitBtn) {
+      submitBtn.onclick = () => {
+        if (!mSelIngId) return toast('Choisissez d’abord un ingrédient', true);
+        const qVal = num(mQty);
+        if (qVal <= 0) {
+          toast('Indiquez une quantité supérieure à 0', true);
+          wrap.querySelector('#mIngQty')?.focus();
+          return;
+        }
+        if (mEditIdx !== null && F.rows[mEditIdx]) {
+          F.rows[mEditIdx] = { ingredient_id: mSelIngId, quantity: qVal };
+          toast('Ingrédient modifié');
+        } else if (F.rows.length === 1 && !F.rows[0].ingredient_id && !F.rows[0].quantity) {
+          F.rows[0] = { ingredient_id: mSelIngId, quantity: qVal };
+          toast('Ingrédient ajouté');
+        } else {
+          F.rows.push({ ingredient_id: mSelIngId, quantity: qVal });
+          toast('Ingrédient ajouté');
+        }
+        mSelIngId = '';
+        mQty = '';
+        mSearchQ = '';
+        mEditIdx = null;
+        mShownLimit = 40;
+        syncAllIngViews();
+        saveDraft(FORM_EDIT_ID);
+      };
+    }
+
+    const addedList = wrap.querySelector('#mIngAddedList');
+    if (addedList) {
+      addedList.onclick = e => {
+        const editBtn = e.target.closest('[data-medit]');
+        if (editBtn) {
+          const idx = Number(editBtn.dataset.medit);
+          const targetRow = F.rows[idx];
+          if (!targetRow) return;
+          mEditIdx = idx;
+          mSelIngId = targetRow.ingredient_id;
+          mQty = String(targetRow.quantity ?? '');
+          mSearchQ = '';
+          renderMobileIng();
+          const comp = $('#mingComposer');
+          if (comp) comp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          setTimeout(() => $('#mIngQty')?.focus(), 120);
+          return;
+        }
+        const delBtn = e.target.closest('[data-mdel]');
+        if (delBtn) {
+          const idx = Number(delBtn.dataset.mdel);
+          F.rows.splice(idx, 1);
+          if (mEditIdx === idx) {
+            mEditIdx = null;
+            mSelIngId = '';
+            mQty = '';
+          } else if (mEditIdx !== null && idx < mEditIdx) {
+            mEditIdx -= 1;
+          }
+          syncAllIngViews();
+          saveDraft(FORM_EDIT_ID);
+          toast('Ingrédient retiré');
+        }
+      };
+    }
+  };
 
   const persistDraftDebounced = debounce(() => saveDraft(FORM_EDIT_ID), 400);
   const bind = (sel, k) => $(sel).oninput = e => { F[k] = e.target.value; live(); persistDraftDebounced(); };
@@ -1981,9 +2803,99 @@ async function viewForm(id) {
     F.file = e.target.files[0] || null;
     if (F.file) { $('#prev').src = URL.createObjectURL(F.file); $('#prev').hidden = false; }
   };
-  $('#addRow').onclick = () => { F.rows.push({ ingredient_id: '', quantity: '' }); drawRows(); persistDraftDebounced(); };
+  $('#addRow').onclick = () => { F.rows.push({ ingredient_id: '', quantity: '' }); syncAllIngViews(); persistDraftDebounced(); };
   $('#save').onclick = saveRecipe;
-  drawRows(); live();
+  syncAllIngViews();
+}
+
+function openQuickCreateIngredientModal(prefillName = '', onCreated) {
+  const ingCats = [...new Set([
+    'Fruits', 'Légumes', 'Viandes et volailles', 'Poissons et fruits de mer',
+    'Produits laitiers et œufs', 'Féculents, céréales et légumineuses',
+    'Herbes aromatiques et épices', 'Huiles, vinaigres et condiments',
+    'Produits sucrés et pâtisserie', 'Fruits à coque et graines',
+    'Conserves et produits pratiques', 'Alternatives végétales et cuisine du monde',
+    'Boissons, vins et alcools',
+    ...ING.map(i => i.category).filter(Boolean)
+  ])];
+
+  openModal(`
+    <h2>Nouvel ingrédient</h2>
+    <p class="muted" style="margin-bottom:10px;font-size:.9rem">L’ingrédient sera enregistré dans votre base et immédiatement sélectionné.</p>
+    <div id="qiErr" class="err" hidden></div>
+    <form class="form" id="qiForm">
+      <label for="qiName">Nom de l’ingrédient *</label>
+      <input id="qiName" value="${esc(prefillName)}" placeholder="Ex. Aubergine, Farine de blé…" required>
+      <div class="two">
+        <div>
+          <label for="qiUnit">Unité de référence *</label>
+          <select id="qiUnit">
+            <option value="g">Grammes (pour 100 g)</option>
+            <option value="ml">Millilitres (pour 100 ml)</option>
+            <option value="piece">Unité / Pièce (par pièce)</option>
+          </select>
+        </div>
+        <div>
+          <label for="qiCat">Catégorie</label>
+          <select id="qiCat">
+            <option value="">Sans catégorie</option>
+            ${ingCats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <p id="qiPieceHint" class="muted" hidden style="margin:8px 0 0;font-size:.84rem">
+        Ex. pour « Aubergine », la quantité sera exprimée en unité(s) (1 aubergine, 2 aubergines…).
+      </p>
+      <label style="margin-top:14px">Valeurs nutritionnelles <small class="muted" style="font-weight:400">(facultatif, 0 par défaut)</small></label>
+      <div class="two" style="grid-template-columns:1fr 1fr">
+        <div><label for="qiKcal" style="margin-top:4px">Calories (kcal)</label><input id="qiKcal" inputmode="decimal" placeholder="0"></div>
+        <div><label for="qiProt" style="margin-top:4px">Protéines (g)</label><input id="qiProt" inputmode="decimal" placeholder="0"></div>
+        <div><label for="qiCarb" style="margin-top:4px">Glucides (g)</label><input id="qiCarb" inputmode="decimal" placeholder="0"></div>
+        <div><label for="qiFat" style="margin-top:4px">Lipides (g)</label><input id="qiFat" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="mb">
+        <button class="btn ghost" id="qiCancel" type="button">Annuler</button>
+        <button class="btn pri" id="qiSave" type="submit">Créer et sélectionner</button>
+      </div>
+    </form>`, (el, close) => {
+    const unitSel = el.querySelector('#qiUnit');
+    const hint = el.querySelector('#qiPieceHint');
+    unitSel.onchange = () => { hint.hidden = unitSel.value !== 'piece'; };
+    el.querySelector('#qiCancel').onclick = close;
+    el.querySelector('#qiName').focus();
+
+    el.querySelector('#qiForm').onsubmit = async e => {
+      e.preventDefault();
+      const errBox = el.querySelector('#qiErr');
+      const btn = el.querySelector('#qiSave');
+      errBox.hidden = true;
+      const name = el.querySelector('#qiName').value.trim();
+      if (!name) {
+        errBox.textContent = 'Le nom de l’ingrédient est obligatoire.';
+        errBox.hidden = false;
+        return;
+      }
+      const payload = {
+        name,
+        category: el.querySelector('#qiCat').value || null,
+        unit: unitSel.value,
+        kcal: Math.max(0, num(el.querySelector('#qiKcal').value)),
+        protein: Math.max(0, num(el.querySelector('#qiProt').value)),
+        carbs: Math.max(0, num(el.querySelector('#qiCarb').value)),
+        fat: Math.max(0, num(el.querySelector('#qiFat').value)),
+        created_by: ME.id
+      };
+
+      await runAction(btn, 'Création…', async () => {
+        const created = await safeMutate(async () => ok(
+          await db.from('ingredients').insert(payload).select('*').single()
+        ), 'La création de l’ingrédient');
+        toast(`Ingrédient « ${created.name} » créé`);
+        close();
+        if (onCreated) await onCreated(created);
+      });
+    };
+  });
 }
 
 function drawRows() {
@@ -2032,6 +2944,9 @@ async function resize(file, maxDim = 1600) {
 }
 
 async function saveRecipe() {
+  if (typeof window.__commitPendingMobileIng === 'function') {
+    window.__commitPendingMobileIng();
+  }
   const rows = F.rows.filter(x => x.ingredient_id || x.quantity !== '');
   if (!F.title.trim()) return toast('Le titre est obligatoire', true);
   if (!CATS.includes(F.category)) return toast('Choisissez une catégorie', true);
