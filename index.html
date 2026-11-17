@@ -2194,6 +2194,19 @@ async function loadMealsRange(startIso, endIso) {
       assignee_ids: (r.shared_calendar_meal_assignees || []).map(a => a.user_id)
     }));
   } else {
+    const rows = ok(await withTimeout(
+      db.from('personal_meals')
+        .select('*')
+        .eq('user_id', ME.id)
+        .gte('meal_date', startIso)
+        .lte('meal_date', endIso)
+        .order('meal_date', { ascending: true }),
+      15000,
+      'Le chargement du calendrier'
+    ));
+    CAL_MEALS = rows || [];
+  }
+}
 
 async function viewCalendar() {
   if (!SESSION || !ME) { location.hash = '#/connexion'; return; }
